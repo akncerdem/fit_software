@@ -1,24 +1,22 @@
-import { useEffect, useState } from 'react'
-import axios from 'axios'
-import { API_BASE } from './config'
+import { Routes, Route, Navigate } from "react-router-dom";
+import Login from "./login";   // src/login.jsx
+import Anasayfa from './anasayfa'    // Senin oluşturduğun sayfa
+import SignUp from "./signup"; // src/signup.jsx
+
+
+function ProtectedRoute({ children }) {
+  const token = localStorage.getItem('access') // access token burada duracak varsayıyoruz
+  return token ? children : <Navigate to="/" replace />
+}
+
 
 export default function App() {
-  const [health, setHealth] = useState(null)
-
-  useEffect(() => {
-    axios.get(`${API_BASE}/api/health/`).then(res => setHealth(res.data)).catch(() => setHealth({ status: 'error' }))
-  }, [])
-
   return (
-    <div style={{ fontFamily: 'system-ui, sans-serif', padding: 24 }}>
-      <h1>Fitware</h1>
-      <p>Welcome 👋 This is your React + Vite frontend.</p>
-      <section style={{ marginTop: 16, padding: 16, border: '1px solid #ddd', borderRadius: 8 }}>
-        <h2>Backend Health</h2>
-        <pre style={{ background: '#f7f7f7', padding: 12, borderRadius: 6 }}>
-{JSON.stringify(health, null, 2)}
-        </pre>
-      </section>
-    </div>
-  )
+    <Routes>
+      <Route path="/" element={<Login />} />
+      <Route path="/signup" element={<SignUp />} />
+      <Route path="/anasayfa" element={<ProtectedRoute> <Anasayfa /></ProtectedRoute>}/>
+      <Route path="*" element={<Navigate to="/" replace />} />
+    </Routes>
+  );
 }
