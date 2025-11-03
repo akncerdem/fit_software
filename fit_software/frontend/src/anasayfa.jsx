@@ -7,7 +7,7 @@ export default function Anasayfa() {
 
   useEffect(() => {
     // Token kontrolü
-    const token = localStorage.getItem('access');
+    const token = localStorage.getItem('access') || sessionStorage.getItem('access');
     if (!token) {
       navigate('/');
       return;
