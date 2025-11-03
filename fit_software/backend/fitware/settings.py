@@ -2,6 +2,7 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 from urllib.parse import urlparse
+from decouple import config
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,8 +22,46 @@ INSTALLED_APPS = [
     # Third-party
     "rest_framework",
     "corsheaders",
-]
+     # Auth
+    "allauth",
+    "allauth.account",
+    "allauth.socialaccount",
+    "allauth.socialaccount.providers.google",
+    'rest_framework.authtoken',
 
+    "dj_rest_auth",
+    "dj_rest_auth.registration",
+     # Your apps
+    'fitware',
+]
+SITE_ID = 1
+
+
+SOCIALACCOUNT_PROVIDERS = {
+        'google': {
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        "APP": {
+            "client_id": config('GOOGLE_CLIENT_ID'),
+            "secret": config('GOOGLE_CLIENT_SECRET'),
+            "key": ""
+        },
+        "SCOPE": ["email", "profile"],
+    }
+}
+# Allauth ayarları
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'optional'
+
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:5173",  # Vite dev
+    "http://localhost:3000",  # CRA (if you use it)
+]
+CSRF_TRUSTED_ORIGINS = ["http://localhost:8000"]
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -32,6 +71,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+     'allauth.account.middleware.AccountMiddleware',
 ]
 
 ROOT_URLCONF = "fitware.urls"
@@ -102,6 +142,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework.authentication.SessionAuthentication",
+        'rest_framework.authentication.TokenAuthentication',
         "rest_framework_simplejwt.authentication.JWTAuthentication",
         "rest_framework.authentication.BasicAuthentication",
     ],
@@ -130,3 +171,15 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+# Google OAuth settings
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+GOOGLE_CLIENT_SECRET = os.getenv("GOOGLE_CLIENT_SECRET", "")
+GOOGLE_REDIRECT_URI = os.getenv(
+    "GOOGLE_REDIRECT_URI",
+    "http://localhost:8000/api/auth/google/callback/",
+)
+GOOGLE_FRONTEND_REDIRECT = os.getenv(
+    "GOOGLE_FRONTEND_REDIRECT",
+    "http://localhost:5173/google-callback",
+)

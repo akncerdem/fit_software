@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "decouple": "^1.0.1",
     "react-router-dom": "^7.9.4"
   }
 }
