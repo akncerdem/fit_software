@@ -297,4 +297,5 @@ urlpatterns = [
     # allauth Google provider endpoints:
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
+    path('api/profiles/', include('profiles.urls')), # <--- Add this
 ]
