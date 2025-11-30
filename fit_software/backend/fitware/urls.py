@@ -16,6 +16,8 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from .views.goal_views import create_goal, update_goal
+from .views.profile_views import create_profile, update_profile
 
 logger = logging.getLogger(__name__)
 
@@ -297,4 +299,12 @@ urlpatterns = [
     # allauth Google provider endpoints:
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
+    
+    # Goal endpoints
+    path("api/v1/goals/", create_goal, name="create_goal"),
+    path("api/v1/goals/<int:goal_id>/", update_goal, name="update_goal"),
+    
+    # Profile endpoints
+    path("api/v1/profile/", create_profile, name="create_profile"),
+    path("api/v1/profile/update/", update_profile, name="update_profile"),
 ]
