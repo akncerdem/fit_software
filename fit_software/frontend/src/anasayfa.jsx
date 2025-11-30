@@ -39,19 +39,34 @@ export default function Anasayfa() {
           <p><strong>Email:</strong> {user.email}</p>
         </div>
       )}
-      <button 
-        onClick={handleLogout}
-        style={{
-          padding: '10px 20px',
-          backgroundColor: '#dc3545',
-          color: 'white',
-          border: 'none',
-          borderRadius: 4,
-          cursor: 'pointer'
-        }}
-      >
-        Çıkış Yap
-      </button>
+      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
+        <button 
+          onClick={() => navigate('/test-endpoints')}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#007bff',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer'
+          }}
+        >
+          Test Endpoints
+        </button>
+        <button 
+          onClick={handleLogout}
+          style={{
+            padding: '10px 20px',
+            backgroundColor: '#dc3545',
+            color: 'white',
+            border: 'none',
+            borderRadius: 4,
+            cursor: 'pointer'
+          }}
+        >
+          Çıkış Yap
+        </button>
+      </div>
     </div>
   )
 }
