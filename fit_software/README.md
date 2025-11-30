@@ -27,6 +27,9 @@ fit_software/
 
 ## Quickstart
 
+## !!!!!!!If you encounter npm : File C:\Program Files\nodejs\npm.ps1 cannot be loaded because running scripts is disabled on this system error:
+## Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
+
 ### 1) Backend (Django API)
 ```bash
 cd backend

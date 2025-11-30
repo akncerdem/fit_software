@@ -86,3 +86,65 @@ export async function signup(firstName, lastName, email, password, repeatPasswor
     throw new Error(err.message || "Kayıt sırasında hata oluştu");
   }
 }
+
+// Goal endpoints
+export async function createGoal(goalData) {
+  const token = localStorage.getItem("access");
+  const res = await fetch(`${API_BASE}/api/v1/goals/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(goalData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Goal creation failed");
+  return data;
+}
+
+export async function updateGoal(goalId, goalData) {
+  const token = localStorage.getItem("access");
+  const res = await fetch(`${API_BASE}/api/v1/goals/${goalId}/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(goalData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Goal update failed");
+  return data;
+}
+
+// Profile endpoints
+export async function createProfile(profileData) {
+  const token = localStorage.getItem("access");
+  const res = await fetch(`${API_BASE}/api/v1/profile/`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(profileData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Profile creation failed");
+  return data;
+}
+
+export async function updateProfile(profileData) {
+  const token = localStorage.getItem("access");
+  const res = await fetch(`${API_BASE}/api/v1/profile/update/`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(profileData),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "Profile update failed");
+  return data;
+}

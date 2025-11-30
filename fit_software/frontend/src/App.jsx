@@ -3,6 +3,7 @@ import Login from "./login";
 import SignUp from "./signup";
 import Anasayfa from "./anasayfa";
 import GoogleCallback from "./GoogleCallback";
+import TestEndpoints from "./test-endpoints";
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("access") || sessionStorage.getItem("access");
@@ -20,6 +21,14 @@ export default function App() {
         element={
           <ProtectedRoute>
             <Anasayfa />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/test-endpoints"
+        element={
+          <ProtectedRoute>
+            <TestEndpoints />
           </ProtectedRoute>
         }
       />
