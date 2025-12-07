@@ -13,7 +13,6 @@ from .models import (
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "fitness_level", "height", "weight")
 
-# --- ARKADAŞLARININ YOLLADIĞI DÜZELTİLMİŞ KISIM ---
 @admin.register(Goal)
 class GoalAdmin(admin.ModelAdmin):
     list_display = (
