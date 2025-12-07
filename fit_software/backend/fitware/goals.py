@@ -30,6 +30,10 @@ class Goal(models.Model):
     target_value = models.FloatField()
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default='workouts')
     
+    # for ADMIN.PY 
+    is_completed = models.BooleanField(default=False)
+    due_date = models.DateField(null=True, blank=True)
+    
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -39,6 +43,20 @@ class Goal(models.Model):
         
     def __str__(self):
         return f"{self.user.username} - {self.title}"
+    
+    def save(self, *args, **kwargs):
+        # Otomatik tamamlandı (is_completed) kontrolü
+        # Eğer current_value hedefi geçtiyse is_completed True olsun
+        try:
+            if self.start_value > self.target_value: # Kilo verme vb.
+                if self.current_value <= self.target_value:
+                    self.is_completed = True
+            else: # Kilo alma, koşu vb.
+                if self.current_value >= self.target_value:
+                    self.is_completed = True
+        except:
+            pass
+        super().save(*args, **kwargs)
     
     @property
     def progress(self):
