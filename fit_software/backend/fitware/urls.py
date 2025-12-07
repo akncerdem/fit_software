@@ -16,9 +16,12 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
+from rest_framework.routers import DefaultRouter
+from .goals import GoalViewSet
 
 logger = logging.getLogger(__name__)
-
+router = DefaultRouter()
+router.register(r'goals', GoalViewSet, basename='goal')
 
 def health(request):
     return JsonResponse({"status": "ok", "service": "fitware", "version": "0.1.0"})
@@ -297,4 +300,5 @@ urlpatterns = [
     # allauth Google provider endpoints:
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
+    path('api/', include(router.urls)),
 ]
