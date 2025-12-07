@@ -13,10 +13,21 @@ from .models import (
 class ProfileAdmin(admin.ModelAdmin):
     list_display = ("user", "fitness_level", "height", "weight")
 
+# --- ARKADAŞLARININ YOLLADIĞI DÜZELTİLMİŞ KISIM ---
 @admin.register(Goal)
 class GoalAdmin(admin.ModelAdmin):
-    list_display = ("title", "user", "is_completed", "due_date", "created_at")
-    search_fields = ("title", "user__email", "user__username")
+    list_display = (
+        "title",
+        "user",
+        "current_value",
+        "target_value",
+        "unit",
+        "is_active",
+        "created_at",
+    )
+    search_fields = ("title", "user__username", "user__email")
+    list_filter = ("is_active", "unit", "created_at")
+# ----------------------------------------------------
 
 class ChallengeJoinedInline(admin.TabularInline):
     model = ChallengeJoined
