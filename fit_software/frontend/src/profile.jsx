@@ -6,6 +6,12 @@ export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [isEditing, setIsEditing] = useState(false);
+  const [profileInfo, setProfileInfo] = useState({
+    age: '',
+    height: '',
+    weight: '',
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
@@ -35,11 +41,29 @@ export default function Profile() {
     { id: 'profile', icon: '👤', label: 'Profile', path: '/profile' }
   ];
 
+  // Handle save profile (frontend only - no API)
+  const handleSaveProfile = () => {
+    // Save to localStorage for persistence
+    localStorage.setItem('profileInfo', JSON.stringify(profileInfo));
+    setIsEditing(false);
+  };
+
+  // Load profile info from localStorage on mount
+  useEffect(() => {
+    const savedProfile = localStorage.getItem('profileInfo');
+    if (savedProfile) {
+      setProfileInfo(JSON.parse(savedProfile));
+    }
+  }, []);
+
   // Örnek profil verileri
   const profileData = {
     name: 'Alex Martinez',
     email: 'alex.martinez@university.edu',
     level: 'Intermediate',
+    age: profileInfo.age || 25,
+    height: profileInfo.height || 175,
+    weight: profileInfo.weight || 70,
     stats: {
       totalWorkouts: 47,
       badgesEarned: 8,
@@ -119,11 +143,78 @@ export default function Profile() {
                 </p>
                 <span className="profile-level">{profileData.level}</span>
 
+                {/* Age, Height, Weight Information */}
+                <div className="profile-info-section">
+                  <div className="info-item">
+                    <span className="info-label">👤 Age</span>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="info-input"
+                        value={profileInfo.age}
+                        onChange={(e) => setProfileInfo({...profileInfo, age: e.target.value})}
+                        placeholder="Age"
+                        min="1"
+                        max="150"
+                      />
+                    ) : (
+                      <span className="info-value">{profileData.age} years old</span>
+                    )}
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">📏 Height</span>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="info-input"
+                        value={profileInfo.height}
+                        onChange={(e) => setProfileInfo({...profileInfo, height: e.target.value})}
+                        placeholder="Height (cm)"
+                        min="50"
+                        max="250"
+                        step="0.1"
+                      />
+                    ) : (
+                      <span className="info-value">{profileData.height} cm</span>
+                    )}
+                  </div>
+                  <div className="info-item">
+                    <span className="info-label">⚖️ Weight</span>
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="info-input"
+                        value={profileInfo.weight}
+                        onChange={(e) => setProfileInfo({...profileInfo, weight: e.target.value})}
+                        placeholder="Weight (kg)"
+                        min="20"
+                        max="300"
+                        step="0.1"
+                      />
+                    ) : (
+                      <span className="info-value">{profileData.weight} kg</span>
+                    )}
+                  </div>
+                </div>
+
                 <div className="profile-buttons">
-                  <button className="btn-edit-profile">
-                    <span>✏️</span>
-                    <span>Edit Profile</span>
-                  </button>
+                  {isEditing ? (
+                    <>
+                      <button className="btn-save-profile" onClick={handleSaveProfile}>
+                        <span>💾</span>
+                        <span>Save</span>
+                      </button>
+                      <button className="btn-cancel-profile" onClick={() => setIsEditing(false)}>
+                        <span>❌</span>
+                        <span>Cancel</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button className="btn-edit-profile" onClick={() => setIsEditing(true)}>
+                      <span>✏️</span>
+                      <span>Edit Profile</span>
+                    </button>
+                  )}
                   <button className="btn-logout-red" onClick={handleLogout}>
                     <span>🚪</span>
                     <span>Log Out</span>
