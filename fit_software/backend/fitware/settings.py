@@ -33,6 +33,8 @@ INSTALLED_APPS = [
     "dj_rest_auth.registration",
      # Your apps
     'fitware',
+    'exercises',
+    'workouts',
 ]
 SITE_ID = 1
 

@@ -296,7 +296,8 @@ urlpatterns = [
      # dj-rest-auth basic login/registration (optional if you use email/pass too)
     path("api/auth/", include("dj_rest_auth.urls")),
     path("api/auth/registration/", include("dj_rest_auth.registration.urls")),
-
+    path("api/exercises/", include("exercises.urls")),
+    path("api/workouts/", include("workouts.urls")),
     # allauth Google provider endpoints:
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
