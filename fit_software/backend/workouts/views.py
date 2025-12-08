@@ -15,9 +15,16 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
         # Only show templates created by the logged-in user
         return WorkoutTemplate.objects.filter(user=self.request.user)
 
+    def get_serializer_context(self):
+        """
+        Pass the request context to the serializer.
+        This is needed so the serializer can access the user.
+        """
+        return {'request': self.request}
+
     def perform_create(self, serializer):
-        # Automatically assign the new template to the current user
-        serializer.save(user=self.request.user)
+        # The user is now set inside the serializer's create method
+        serializer.save()
 
     @action(detail=True, methods=['post'])
     def start_session(self, request, pk=None):
