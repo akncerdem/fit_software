@@ -7,10 +7,11 @@ from .goals import Goal
 # PROFILE
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
+    bio = models.TextField(blank=True, null=True)
     fitness_level = models.CharField(max_length=50, blank=True, choices=[
-        ('beginner', 'Beginner'),
-        ('intermediate', 'Intermediate'),
-        ('advanced', 'Advanced')
+        ('no_exercise', 'I don\'t exercise'),
+        ('sometimes', 'Sometimes exercise'),
+        ('regular', 'Regular (3+ times per week)')
     ])
     height = models.FloatField(help_text="Height in cm", null=True, blank=True)
     weight = models.FloatField(help_text="Weight in kg", null=True, blank=True)
