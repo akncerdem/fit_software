@@ -18,10 +18,12 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from .goals import GoalViewSet
+from .profile import ProfileViewSet
 
 logger = logging.getLogger(__name__)
 router = DefaultRouter()
 router.register(r'goals', GoalViewSet, basename='goal')
+router.register(r'profile', ProfileViewSet, basename='profile')
 
 def health(request):
     return JsonResponse({"status": "ok", "service": "fitware", "version": "0.1.0"})
@@ -296,7 +298,8 @@ urlpatterns = [
      # dj-rest-auth basic login/registration (optional if you use email/pass too)
     path("api/auth/", include("dj_rest_auth.urls")),
     path("api/auth/registration/", include("dj_rest_auth.registration.urls")),
-
+    path("api/exercises/", include("exercises.urls")),
+    path("api/workouts/", include("workouts.urls")),
     # allauth Google provider endpoints:
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
