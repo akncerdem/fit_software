@@ -1,11 +1,22 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { api } from "./config";
 import "./profile.css";
 
 export default function Profile() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
+  const [profile, setProfile] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    height: '',
+    weight: '',
+    bio: '',
+    fitness_level: ''
+  });
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
@@ -18,7 +29,30 @@ export default function Profile() {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+
+    fetchProfile();
   }, [navigate]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/profile/');
+      setProfile(response.data);
+      // Update form data if profile exists
+      if (response.data) {
+        setFormData({
+          height: response.data.height || '',
+          weight: response.data.weight || '',
+          bio: response.data.bio || '',
+          fitness_level: response.data.fitness_level || ''
+        });
+      }
+    } catch (error) {
+      // Profile doesn't exist yet, that's okay
+      if (error.response?.status !== 404) {
+        console.error('Error fetching profile:', error);
+      }
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('access');
@@ -26,6 +60,84 @@ export default function Profile() {
     localStorage.removeItem('user');
     navigate('/');
   }
+
+  const handleEditProfile = () => {
+    // Load existing profile data if available
+    if (profile) {
+      setFormData({
+        height: profile.height || '',
+        weight: profile.weight || '',
+        bio: profile.bio || '',
+        fitness_level: profile.fitness_level || ''
+      });
+    } else {
+      // Reset form for new profile
+      setFormData({
+        height: '',
+        weight: '',
+        bio: '',
+        fitness_level: ''
+      });
+    }
+    setError(null);
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+    setError(null);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const payload = {
+        height: formData.height ? parseFloat(formData.height) : null,
+        weight: formData.weight ? parseFloat(formData.weight) : null,
+        bio: formData.bio || '',
+        fitness_level: formData.fitness_level || ''
+      };
+
+      let response;
+      if (profile && profile.id) {
+        // Update existing profile
+        response = await api.put(`/profile/${profile.id}/`, payload);
+      } else {
+        // Create new profile
+        response = await api.post('/profile/', payload);
+      }
+
+      setProfile(response.data);
+      setIsModalOpen(false);
+      // Refresh profile data
+      await fetchProfile();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      setError(error.response?.data?.detail || error.response?.data?.message || 'Failed to save profile. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getFitnessLevelLabel = (level) => {
+    const labels = {
+      'no_exercise': "I don't exercise",
+      'sometimes': 'Sometimes exercise',
+      'regular': 'Regular (3+ times per week)'
+    };
+    return labels[level] || level;
+  };
 
   const menuItems = [
     { id: 'dashboard', icon: '🏠', label: 'Dashboard', path: '/anasayfa' },
@@ -117,10 +229,21 @@ export default function Profile() {
                 <p className="profile-email">
                   {user?.email || profileData.email}
                 </p>
-                <span className="profile-level">{profileData.level}</span>
+                <span className="profile-level">
+                  {profile?.fitness_level ? getFitnessLevelLabel(profile.fitness_level) : profileData.level}
+                </span>
+                {profile?.bio && (
+                  <p className="profile-bio">{profile.bio}</p>
+                )}
+                {profile?.height && (
+                  <p className="profile-stats">Height: {profile.height} cm</p>
+                )}
+                {profile?.weight && (
+                  <p className="profile-stats">Weight: {profile.weight} kg</p>
+                )}
 
                 <div className="profile-buttons">
-                  <button className="btn-edit-profile">
+                  <button className="btn-edit-profile" onClick={handleEditProfile}>
                     <span>✏️</span>
                     <span>Edit Profile</span>
                   </button>
@@ -173,6 +296,103 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Edit Profile Modal */}
+      {isModalOpen && (
+        <div className="modal-overlay" onClick={handleCloseModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {profile ? 'Edit Profile' : 'Create Profile'}
+              </h2>
+              <button className="modal-close" onClick={handleCloseModal}>
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleSubmit} className="profile-form">
+              {error && (
+                <div className="form-error">
+                  {error}
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="height">Height (cm)</label>
+                <input
+                  type="number"
+                  id="height"
+                  name="height"
+                  value={formData.height}
+                  onChange={handleInputChange}
+                  placeholder="Enter height in cm"
+                  step="0.1"
+                  min="0"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="weight">Weight (kg)</label>
+                <input
+                  type="number"
+                  id="weight"
+                  name="weight"
+                  value={formData.weight}
+                  onChange={handleInputChange}
+                  placeholder="Enter weight in kg"
+                  step="0.1"
+                  min="0"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="bio">Bio</label>
+                <textarea
+                  id="bio"
+                  name="bio"
+                  value={formData.bio}
+                  onChange={handleInputChange}
+                  placeholder="Tell us about yourself..."
+                  rows="4"
+                />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="fitness_level">Fitness Level</label>
+                <select
+                  id="fitness_level"
+                  name="fitness_level"
+                  value={formData.fitness_level}
+                  onChange={handleInputChange}
+                >
+                  <option value="">Select fitness level</option>
+                  <option value="no_exercise">I don't exercise</option>
+                  <option value="sometimes">Sometimes exercise</option>
+                  <option value="regular">Regular (3+ times per week)</option>
+                </select>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={handleCloseModal}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-save"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
