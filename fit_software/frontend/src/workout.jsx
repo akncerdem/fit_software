@@ -21,6 +21,14 @@ export default function Workout() {
     notes: ""
   });
 
+  // EXERCISE STATE'LERİ
+  const [availableExercises, setAvailableExercises] = useState([]);
+  const [selectedExercises, setSelectedExercises] = useState([]);
+  const [exerciseSearch, setExerciseSearch] = useState("");
+  const [showExerciseDropdown, setShowExerciseDropdown] = useState(false);
+  const [showNewExerciseForm, setShowNewExerciseForm] = useState(false);
+  const [newExercise, setNewExercise] = useState({ name: "", category: "strength" });
+
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
     if (!token) {
@@ -32,7 +40,18 @@ export default function Workout() {
       setUser(JSON.parse(userData));
     }
     fetchWorkouts();
+    fetchExercises();
   }, [navigate]);
+
+  // Egzersizleri Getir (GET)
+  const fetchExercises = async () => {
+    try {
+      const response = await api.get('exercises/');
+      setAvailableExercises(response.data);
+    } catch (err) {
+      console.error("Exercise API Hatası:", err);
+    }
+  };
 
   // Antrenmanları Listele (GET)
   const fetchWorkouts = async () => {
@@ -60,18 +79,28 @@ export default function Workout() {
     e.preventDefault(); // Sayfanın yenilenmesini engelle
 
     try {
-      const payload = {
+      // First create a workout template with exercises
+      const templatePayload = {
         title: formData.title,
-        duration_minutes: parseInt(formData.duration) || 0, // Sayıya çevir
-        notes: formData.notes
+        description: formData.notes,
+        exercises_data: selectedExercises.map((ex, index) => ({
+          exercise: ex.id,
+          order: index + 1,
+          sets: ex.sets || 3,
+          reps: ex.reps || "8-12"
+        }))
       };
 
-      // POST İsteği At
-      await api.post('workouts/sessions/', payload);
+      // Create template first
+      const templateResponse = await api.post('workouts/templates/', templatePayload);
+      
+      // Then start a session from this template
+      await api.post(`workouts/templates/${templateResponse.data.id}/start_session/`);
 
       // Başarılı olursa:
       setShowModal(false); // Modalı kapat
       setFormData({ title: "", duration: "", notes: "" }); // Formu temizle
+      setSelectedExercises([]); // Seçili egzersizleri temizle
       fetchWorkouts(); // Antrenmanları yeniden yükle
       alert("Antrenman başarıyla oluşturuldu! 🎉");
 
@@ -80,6 +109,51 @@ export default function Workout() {
       alert("Hata oluştu, lütfen tekrar deneyin.");
     }
   };
+
+  // Egzersiz Ekleme
+  const addExerciseToWorkout = (exercise) => {
+    if (!selectedExercises.find(ex => ex.id === exercise.id)) {
+      setSelectedExercises([...selectedExercises, { ...exercise, sets: 3, reps: "8-12" }]);
+    }
+    setExerciseSearch("");
+    setShowExerciseDropdown(false);
+  };
+
+  // Egzersiz Çıkarma
+  const removeExerciseFromWorkout = (exerciseId) => {
+    setSelectedExercises(selectedExercises.filter(ex => ex.id !== exerciseId));
+  };
+
+  // Egzersiz Set/Rep Güncelleme
+  const updateExerciseDetails = (exerciseId, field, value) => {
+    setSelectedExercises(selectedExercises.map(ex => 
+      ex.id === exerciseId ? { ...ex, [field]: value } : ex
+    ));
+  };
+
+  // Yeni Custom Egzersiz Oluştur
+  const handleCreateExercise = async () => {
+    if (!newExercise.name.trim()) {
+      alert("Egzersiz adı gerekli!");
+      return;
+    }
+    try {
+      const response = await api.post('exercises/', newExercise);
+      setAvailableExercises([...availableExercises, response.data]);
+      addExerciseToWorkout(response.data);
+      setNewExercise({ name: "", category: "strength" });
+      setShowNewExerciseForm(false);
+      alert("Yeni egzersiz oluşturuldu! 💪");
+    } catch (err) {
+      console.error("Egzersiz oluşturma hatası:", err);
+      alert("Egzersiz oluşturulamadı.");
+    }
+  };
+
+  // Filtrelenmiş Egzersizler
+  const filteredExercises = availableExercises.filter(ex => 
+    ex.name.toLowerCase().includes(exerciseSearch.toLowerCase())
+  );
 
   const handleLogout = () => {
     localStorage.removeItem('access');
@@ -205,16 +279,131 @@ export default function Workout() {
                 />
               </div>
 
+              {/* EXERCISES SECTION */}
               <div className="form-group">
-                <label className="form-label">Duration (minutes)</label>
-                <input 
-                  type="number" 
-                  className="form-input"
-                  placeholder="45"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({...formData, duration: e.target.value})}
-                />
+                <label className="form-label">Exercises</label>
+                
+                {/* Exercise Search */}
+                <div className="exercise-search-container">
+                  <input 
+                    type="text"
+                    className="form-input"
+                    placeholder="Search exercises..."
+                    value={exerciseSearch}
+                    onChange={(e) => {
+                      setExerciseSearch(e.target.value);
+                      setShowExerciseDropdown(true);
+                    }}
+                    onFocus={() => setShowExerciseDropdown(true)}
+                  />
+                  
+                  {/* Dropdown */}
+                  {showExerciseDropdown && (
+                    <div className="exercise-dropdown">
+                      {filteredExercises.length > 0 ? (
+                        filteredExercises.slice(0, 50).map(ex => (
+                          <div 
+                            key={ex.id} 
+                            className="exercise-dropdown-item"
+                            onClick={() => addExerciseToWorkout(ex)}
+                          >
+                            <span>{ex.name}</span>
+                            <span className="exercise-category">{ex.category}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="exercise-dropdown-item no-results">
+                          <span>No exercises found</span>
+                          {exerciseSearch.trim() !== "" && (
+                            <button 
+                              type="button"
+                              className="btn-create-exercise"
+                              onClick={() => {
+                                setNewExercise({ ...newExercise, name: exerciseSearch });
+                                setShowNewExerciseForm(true);
+                                setShowExerciseDropdown(false);
+                              }}
+                            >
+                              + Create "{exerciseSearch}"
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Selected Exercises List */}
+                {selectedExercises.length > 0 && (
+                  <div className="selected-exercises">
+                    {selectedExercises.map((ex, index) => (
+                      <div key={ex.id} className="selected-exercise-item">
+                        <div className="exercise-info">
+                          <span className="exercise-order">{index + 1}</span>
+                          <span className="exercise-name">{ex.name}</span>
+                          <span className="exercise-category-badge">{ex.category}</span>
+                        </div>
+                        <div className="exercise-inputs">
+                          <input
+                            type="number"
+                            className="input-small"
+                            placeholder="Sets"
+                            value={ex.sets}
+                            onChange={(e) => updateExerciseDetails(ex.id, 'sets', parseInt(e.target.value) || 0)}
+                            min="1"
+                          />
+                          <span>x</span>
+                          <input
+                            type="text"
+                            className="input-small"
+                            placeholder="Reps"
+                            value={ex.reps}
+                            onChange={(e) => updateExerciseDetails(ex.id, 'reps', e.target.value)}
+                          />
+                          <button 
+                            type="button" 
+                            className="btn-remove-exercise"
+                            onClick={() => removeExerciseFromWorkout(ex.id)}
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {/* New Exercise Form (Mini) */}
+              {showNewExerciseForm && (
+                <div className="new-exercise-form">
+                  <h4>Create New Exercise</h4>
+                  <input
+                    type="text"
+                    className="form-input"
+                    placeholder="Exercise name"
+                    value={newExercise.name}
+                    onChange={(e) => setNewExercise({...newExercise, name: e.target.value})}
+                  />
+                  <select
+                    className="form-input"
+                    value={newExercise.category}
+                    onChange={(e) => setNewExercise({...newExercise, category: e.target.value})}
+                  >
+                    <option value="strength">Strength</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="flexibility">Flexibility</option>
+                  </select>
+                  <div className="new-exercise-actions">
+                    <button type="button" className="btn-cancel-small" onClick={() => setShowNewExerciseForm(false)}>
+                      Cancel
+                    </button>
+                    <button type="button" className="btn-save-small" onClick={handleCreateExercise}>
+                      Add Exercise
+                    </button>
+                  </div>
+                </div>
+              )}
 
               <div className="form-group">
                 <label className="form-label">Description / Notes</label>
@@ -231,7 +420,7 @@ export default function Workout() {
                 <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-save">
+                <button type="submit" className="btn-save" disabled={selectedExercises.length === 0}>
                   Save Workout
                 </button>
               </div>

@@ -22,9 +22,13 @@ class WorkoutTemplateSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         exercises_data = validated_data.pop('exercises_data', [])
-        template = WorkoutTemplate.objects.create(**validated_data)
+        # The user needs to be associated with the template itself
+        user = self.context['request'].user
+        template = WorkoutTemplate.objects.create(user=user, **validated_data)
         
         for ex_data in exercises_data:
+            # The frontend sends `exercise: ID`, but the model needs `exercise_id=ID`
+            ex_data['exercise_id'] = ex_data.pop('exercise')
             TemplateExercise.objects.create(template=template, **ex_data)
         return template
 
