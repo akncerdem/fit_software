@@ -8,7 +8,9 @@ export default function Profile() {
   const [user, setUser] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState(null);
+  const [badges, setBadges] = useState([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     height: '',
@@ -16,7 +18,11 @@ export default function Profile() {
     bio: '',
     fitness_level: ''
   });
+  const [badgeFormData, setBadgeFormData] = useState({
+    badge_type: ''
+  });
   const [error, setError] = useState(null);
+  const [badgeError, setBadgeError] = useState(null);
 
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
@@ -31,6 +37,7 @@ export default function Profile() {
     }
 
     fetchProfile();
+    fetchBadges();
   }, [navigate]);
 
   const fetchProfile = async () => {
@@ -51,6 +58,16 @@ export default function Profile() {
       if (error.response?.status !== 404) {
         console.error('Error fetching profile:', error);
       }
+    }
+  };
+
+  const fetchBadges = async () => {
+    try {
+      const response = await api.get('/badges/');
+      setBadges(response.data || []);
+    } catch (error) {
+      console.error('Error fetching badges:', error);
+      setBadges([]);
     }
   };
 
@@ -86,6 +103,47 @@ export default function Profile() {
   const handleCloseModal = () => {
     setIsModalOpen(false);
     setError(null);
+  };
+
+  const handleAddBadge = () => {
+    setBadgeFormData({ badge_type: '' });
+    setBadgeError(null);
+    setIsBadgeModalOpen(true);
+  };
+
+  const handleCloseBadgeModal = () => {
+    setIsBadgeModalOpen(false);
+    setBadgeError(null);
+  };
+
+  const handleBadgeInputChange = (e) => {
+    const { name, value } = e.target;
+    setBadgeFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleBadgeSubmit = async (e) => {
+    e.preventDefault();
+    setIsLoading(true);
+    setBadgeError(null);
+
+    try {
+      const response = await api.post('/badges/', {
+        badge_type: badgeFormData.badge_type
+      });
+      
+      // Refresh badges list
+      await fetchBadges();
+      setIsBadgeModalOpen(false);
+      setBadgeFormData({ badge_type: '' });
+    } catch (error) {
+      console.error('Error adding badge:', error);
+      setBadgeError(error.response?.data?.badge_type?.[0] || error.response?.data?.detail || 'Failed to add badge. Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -137,6 +195,30 @@ export default function Profile() {
       'regular': 'Regular (3+ times per week)'
     };
     return labels[level] || level;
+  };
+
+  const getBadgeIcon = (badgeType) => {
+    const iconMap = {
+      'Week Warrior': '🏆',
+      'Early Bird': '🔓',
+      'Consistency King': '💪',
+      'Push-up Pro': '💯',
+      'Fire Starter': '🔥',
+      'Strength Builder': '🏋️',
+      'Cardio Champion': '🏃',
+      'Rising Star': '⭐'
+    };
+    return iconMap[badgeType] || '🏅';
+  };
+
+  const formatBadgeDate = (dateString) => {
+    if (!dateString) return '';
+    const date = new Date(dateString);
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   };
 
   const menuItems = [
@@ -268,7 +350,7 @@ export default function Profile() {
                   </div>
                   <div className="stat-item">
                     <div className="stat-icon">🏅</div>
-                    <div className="stat-value">{profileData.stats.badgesEarned}</div>
+                    <div className="stat-value">{badges.length}</div>
                     <div className="stat-label">Badges Earned</div>
                   </div>
                   <div className="stat-item">
@@ -281,16 +363,49 @@ export default function Profile() {
 
               {/* Badges Card */}
               <div className="badges-card">
-                <h3 className="section-title">Earned Badges</h3>
-                <div className="badges-grid">
-                  {profileData.badges.map((badge) => (
-                    <div key={badge.id} className="badge-item">
-                      <div className="badge-icon-large">{badge.icon}</div>
-                      <div className="badge-name">{badge.name}</div>
-                      <div className="badge-date">{badge.date}</div>
-                    </div>
-                  ))}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
+                  <h3 className="section-title" style={{ margin: 0 }}>Earned Badges</h3>
+                  <button 
+                    onClick={handleAddBadge}
+                    style={{
+                      padding: '0.4rem 0.8rem',
+                      fontSize: '0.85rem',
+                      backgroundColor: '#4CAF50',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      fontWeight: '500'
+                    }}
+                    title="Add Badge"
+                  >
+                    <span>➕</span>
+                    <span>Add Badge</span>
+                  </button>
                 </div>
+                {badges.length === 0 ? (
+                  <div style={{ 
+                    textAlign: 'center', 
+                    padding: '2rem', 
+                    color: '#666',
+                    fontSize: '0.95rem'
+                  }}>
+                    You haven't earned any badges yet — start your first goal to begin your journey!
+                  </div>
+                ) : (
+                  <div className="badges-grid">
+                    {badges.map((badge, index) => (
+                      <div key={index} className="badge-item">
+                        <div className="badge-icon-large">{getBadgeIcon(badge.badge_type)}</div>
+                        <div className="badge-name">{badge.badge_type}</div>
+                        <div className="badge-date">{formatBadgeDate(badge.awarded_at)}</div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -387,6 +502,67 @@ export default function Profile() {
                   disabled={isLoading}
                 >
                   {isLoading ? 'Saving...' : 'Save'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Badge Modal */}
+      {isBadgeModalOpen && (
+        <div className="modal-overlay" onClick={handleCloseBadgeModal}>
+          <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h2 className="modal-title">Add Badge</h2>
+              <button className="modal-close" onClick={handleCloseBadgeModal}>
+                ×
+              </button>
+            </div>
+
+            <form onSubmit={handleBadgeSubmit} className="profile-form">
+              {badgeError && (
+                <div className="form-error">
+                  {badgeError}
+                </div>
+              )}
+
+              <div className="form-group">
+                <label htmlFor="badge_type">Badge Type</label>
+                <select
+                  id="badge_type"
+                  name="badge_type"
+                  value={badgeFormData.badge_type}
+                  onChange={handleBadgeInputChange}
+                  required
+                >
+                  <option value="">Select a badge type</option>
+                  <option value="Week Warrior">Week Warrior</option>
+                  <option value="Early Bird">Early Bird</option>
+                  <option value="Consistency King">Consistency King</option>
+                  <option value="Push-up Pro">Push-up Pro</option>
+                  <option value="Fire Starter">Fire Starter</option>
+                  <option value="Strength Builder">Strength Builder</option>
+                  <option value="Cardio Champion">Cardio Champion</option>
+                  <option value="Rising Star">Rising Star</option>
+                </select>
+              </div>
+
+              <div className="form-actions">
+                <button
+                  type="button"
+                  className="btn-cancel"
+                  onClick={handleCloseBadgeModal}
+                  disabled={isLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="btn-save"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Adding...' : 'Add Badge'}
                 </button>
               </div>
             </form>

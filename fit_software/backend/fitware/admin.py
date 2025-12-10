@@ -6,7 +6,7 @@ from .models import (
     # ChallengeJoined,
     # Movement,
     # WorkoutLog,
-    # Badge,
+    Badge,
 )
 
 # @admin.register(Profile)
@@ -36,6 +36,10 @@ class GoalAdmin(admin.ModelAdmin):
 #     list_display = ("title", "user", "date", "created_at")
 #     search_fields = ("title", "user__email")
 
-# @admin.register(Badge)
-# class BadgeAdmin(admin.ModelAdmin):
-#     list_display = ("badge_type", "user", "awarded_at")
+class BadgeAdmin(admin.ModelAdmin):
+    list_display = ("badge_type", "user", "awarded_at")
+    list_filter = ("badge_type", "awarded_at")
+    search_fields = ("badge_type", "user__email", "user__username")
+    readonly_fields = ("awarded_at",)
+
+admin.site.register(Badge, BadgeAdmin)   
