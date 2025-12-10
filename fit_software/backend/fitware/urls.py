@@ -19,11 +19,13 @@ from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 from rest_framework.routers import DefaultRouter
 from .goals import GoalViewSet
 from .profile import ProfileViewSet
+from .badges import BadgeViewSet
 
 logger = logging.getLogger(__name__)
 router = DefaultRouter()
 router.register(r'goals', GoalViewSet, basename='goal')
 router.register(r'profile', ProfileViewSet, basename='profile')
+router.register(r'badges', BadgeViewSet, basename='badge')
 
 def health(request):
     return JsonResponse({"status": "ok", "service": "fitware", "version": "0.1.0"})
