@@ -26,14 +26,16 @@ class WorkoutTemplate(models.Model):
         )
         
         # Copy exercises from Template -> Session
+        # Create multiple logs based on the number of sets in template
         for tmpl_ex in self.template_exercises.all():
-            SessionLog.objects.create(
-                session=new_session,
-                exercise=tmpl_ex.exercise,
-                set_number=1, 
-                reps=0,
-                weight_kg=0
-            )
+            for set_num in range(1, tmpl_ex.sets + 1):
+                SessionLog.objects.create(
+                    session=new_session,
+                    exercise=tmpl_ex.exercise,
+                    set_number=set_num, 
+                    reps=tmpl_ex.target_reps,
+                    weight_kg=0
+                )
         return new_session
 
 class TemplateExercise(models.Model):
@@ -42,6 +44,7 @@ class TemplateExercise(models.Model):
     order = models.PositiveIntegerField()
     sets = models.PositiveIntegerField(default=3)
     reps = models.CharField(max_length=50, help_text="Target reps (e.g. '8-12')")
+    target_reps = models.PositiveIntegerField(default=0, help_text="Target reps as number (for reference)")
 
     class Meta:
         ordering = ['order']

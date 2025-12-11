@@ -9,7 +9,7 @@ class TemplateExerciseSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = TemplateExercise
-        fields = ['id', 'exercise', 'exercise_name', 'category', 'metric_type', 'order', 'sets', 'reps']
+        fields = ['id', 'exercise', 'exercise_name', 'category', 'metric_type', 'order', 'sets', 'reps', 'target_reps']
 
 class WorkoutTemplateSerializer(serializers.ModelSerializer):
     exercises = TemplateExerciseSerializer(source='template_exercises', many=True, read_only=True)
@@ -44,6 +44,14 @@ class WorkoutTemplateSerializer(serializers.ModelSerializer):
         for ex_data in exercises_data:
             # The frontend sends `exercise: ID`, but the model needs `exercise_id=ID`
             ex_data['exercise_id'] = ex_data.pop('exercise')
+            # Extract reps value - if it's a string like "8-12", extract the first number for target_reps
+            reps_str = ex_data.get('reps', '0')
+            if isinstance(reps_str, str) and reps_str:
+                # Try to extract first number from "8-12" format
+                first_num = ''.join(filter(str.isdigit, reps_str.split('-')[0]))
+                ex_data['target_reps'] = int(first_num) if first_num else 0
+            else:
+                ex_data['target_reps'] = int(reps_str) if reps_str else 0
             TemplateExercise.objects.create(template=template, **ex_data)
         return template
 
