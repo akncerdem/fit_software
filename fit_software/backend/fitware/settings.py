@@ -3,6 +3,11 @@ from pathlib import Path
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 from decouple import config
+import warnings
+
+# Suppress urllib3 warnings about LibreSSL
+warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL 1.1.1+')
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent

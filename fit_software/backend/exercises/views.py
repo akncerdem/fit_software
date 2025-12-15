@@ -25,3 +25,23 @@ class ExerciseListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         # Automatically assign the current user so it becomes a "Custom" exercise
         serializer.save(created_by=self.request.user)
+
+class ExerciseDetailView(generics.RetrieveUpdateDestroyAPIView):
+    """
+    API endpoint for retrieving, updating, or deleting a single Exercise.
+    """
+    serializer_class = ExerciseSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    queryset = Exercise.objects.all()
+
+    def get_queryset(self):
+        user = self.request.user
+        # Ensure users can only access exercises they created or system exercises
+        return Exercise.objects.filter(
+            Q(created_by__isnull=True) | Q(created_by=user)
+        )
+    def perform_update(self, serializer):
+        # Ensure that only the owner can update the exercise
+        if self.get_object().created_by != self.request.user:
+            raise PermissionDenied("You do not have permission to edit this exercise.")
+        serializer.save()        

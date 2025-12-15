@@ -915,3 +915,218 @@
   display: flex;
   align-items: center;
 }
+
+/* Small Buttons for Edit/Delete/Add */
+.btn-edit-small, .btn-add-small, .btn-delete-small {
+  padding: 0.35rem 0.75rem;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  margin-left: 0.5rem;
+  transition: all 0.2s;
+}
+
+.btn-edit-small {
+  background: #dbeafe;
+  color: #2563eb;
+}
+
+.btn-edit-small:hover {
+  background: #bfdbfe;
+}
+
+.btn-add-small {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.btn-add-small:hover {
+  background: #bbf7d0;
+}
+
+.btn-delete-small {
+  background: #fee2e2;
+  color: #dc2626;
+}
+
+.btn-delete-small:hover {
+  background: #fecaca;
+}
+
+/* Exercise Block */
+.exercises-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.exercise-block {
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem;
+}
+
+.exercise-header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.exercise-header .exercise-name {
+  font-weight: 600;
+  color: #1e293b;
+  font-size: 1rem;
+}
+
+.exercise-header .exercise-category {
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  border-radius: 4px;
+  text-transform: capitalize;
+}
+
+/* Sets List */
+.sets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.set-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem 0.75rem;
+  background: #f8fafc;
+  border-radius: 8px;
+}
+
+.set-info {
+  display: flex;
+  gap: 1rem;
+  font-size: 0.875rem;
+  color: #475569;
+}
+
+.set-info span:first-child {
+  font-weight: 600;
+  color: #2563eb;
+}
+
+.set-actions {
+  display: flex;
+  gap: 0.25rem;
+  align-items: center;
+}
+
+.no-sets {
+  color: #94a3b8;
+  font-size: 0.875rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+/* Edit Set Form (inline) */
+.edit-set-form {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.edit-set-form .form-input {
+  width: 70px;
+  padding: 0.4rem;
+  margin-bottom: 0;
+}
+
+/* Edit Exercise Form */
+.edit-exercise-form {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #eff6ff;
+  border-radius: 8px;
+  border: 1px solid #bfdbfe;
+}
+
+.edit-exercise-form .form-group {
+  margin-bottom: 0.75rem;
+}
+
+.edit-exercise-form .form-group:last-of-type {
+  margin-bottom: 0;
+}
+
+.edit-exercise-form .form-label {
+  font-size: 0.8rem;
+  color: #1e40af;
+  margin-bottom: 0.25rem;
+  display: block;
+}
+
+.edit-exercise-form .form-input,
+.edit-exercise-form .form-textarea {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid #93c5fd;
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
+.edit-exercise-form .form-textarea {
+  resize: vertical;
+  min-height: 60px;
+}
+
+.edit-exercise-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+/* Add Set Form */
+.add-set-form {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  padding: 1rem;
+  background: #f0fdf4;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+  align-items: center;
+}
+
+.add-set-form .form-input {
+  margin-bottom: 0;
+}
+
+.add-set-form select {
+  flex: 2;
+  min-width: 150px;
+}
+
+.add-set-form .input-small {
+  width: 70px;
+}
+
+/* Btn Edit for Session */
+.btn-edit {
+  padding: 0.75rem 1.5rem;
+  background: #dbeafe;
+  color: #2563eb;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-left: 0.5rem;
+}
+
+.btn-edit:hover {
+  background: #bfdbfe;
+}

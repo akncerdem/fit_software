@@ -43,9 +43,19 @@ export default function Workout() {
   const [showNewExerciseForm, setShowNewExerciseForm] = useState(false);
   const [newExercise, setNewExercise] = useState({ name: "", category: "strength", metric_type: "weight" });
 
-  // Add log state
-  const [showAddLogForm, setShowAddLogForm] = useState(false);
-  const [newLog, setNewLog] = useState({ exercise: "", set_number: 1, weight_kg: 0, reps: 0 });
+  // Add set state
+  const [showAddSetForm, setShowAddSetForm] = useState(false);
+  const [newSet, setNewSet] = useState({ exercise_id: "", weight_kg: 0, reps: 0, rpe: 0 });
+
+  // Editing state for a single set and for the whole session
+  const [editingSetId, setEditingSetId] = useState(null);
+  const [editingSetData, setEditingSetData] = useState({ weight_kg: 0, reps: 0, rpe: 0 });
+  const [editingSession, setEditingSession] = useState(false);
+  const [sessionForm, setSessionForm] = useState({ title: "", duration_minutes: 0, notes: "" });
+
+  // Editing state for a single exercise container
+  const [editingExerciseId, setEditingExerciseId] = useState(null);
+  const [editingExerciseData, setEditingExerciseData] = useState({ notes: '', order: 1 });
 
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
@@ -112,6 +122,15 @@ export default function Workout() {
       const response = await api.get(`workouts/sessions/${workout.id}/`);
       setSelectedWorkout(response.data);
       setShowDetailModal(true);
+      // Initialize session form for potential edits
+      setSessionForm({
+        title: response.data.title || "",
+        duration_minutes: response.data.duration_minutes || 0,
+        notes: response.data.notes || ""
+      });
+      setEditingSession(false);
+      setEditingSetId(null);
+      setEditingExerciseId(null);
     } catch (err) {
       console.error("Error fetching workout details:", err);
       alert("Could not load workout details.");
@@ -132,102 +151,122 @@ export default function Workout() {
     }
   };
 
-  // Add log to session
-  const handleAddLog = async () => {
-    if (!selectedWorkout || !newLog.exercise) return;
+  // Add set to session
+  const handleAddSet = async () => {
+    if (!selectedWorkout || !newSet.exercise_id) return;
     try {
-      await api.post(`workouts/sessions/${selectedWorkout.id}/add_log/`, newLog);
+      await api.post(`workouts/sessions/${selectedWorkout.id}/add_set/`, newSet);
       // Refresh session data
       const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
       setSelectedWorkout(response.data);
-      setNewLog({ exercise: "", set_number: 1, weight_kg: 0, reps: 0 });
-      setShowAddLogForm(false);
+      setNewSet({ exercise_id: "", weight_kg: 0, reps: 0, rpe: 0 });
+      setShowAddSetForm(false);
     } catch (err) {
-      console.error("Error adding log:", err);
-      alert("Could not add log.");
+      console.error("Error adding set:", err);
+      alert("Could not add set.");
     }
   };
 
-  // Update log
-  const handleUpdateLog = async (logId, updates) => {
+  // Update set
+  const handleUpdateSet = async (setId, updates) => {
     if (!selectedWorkout) return;
     try {
-      await api.patch(`workouts/sessions/${selectedWorkout.id}/update_log/`, {
-        log_id: logId,
+      await api.patch(`workouts/sessions/${selectedWorkout.id}/update_set/`, {
+        set_id: setId,
         ...updates
       });
       // Refresh session data
       const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
       setSelectedWorkout(response.data);
     } catch (err) {
-      console.error("Error updating log:", err);
+      console.error("Error updating set:", err);
     }
   };
 
-  // Delete log
-  const handleDeleteLog = async (logId) => {
+  // Delete set
+  const handleDeleteSet = async (setId) => {
     if (!selectedWorkout) return;
     if (!window.confirm("Delete this set?")) return;
     try {
-      await api.delete(`workouts/sessions/${selectedWorkout.id}/delete_log/?log_id=${logId}`);
+      await api.delete(`workouts/sessions/${selectedWorkout.id}/delete_set/?set_id=${setId}`);
       // Refresh session data
       const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
       setSelectedWorkout(response.data);
     } catch (err) {
-      console.error("Error deleting log:", err);
-    }
-  };
-
-  // Complete workout
-  const handleCompleteWorkout = async () => {
-    if (!selectedWorkout) return;
-    try {
-      await api.post(`workouts/sessions/${selectedWorkout.id}/complete/`, completeForm);
-      setShowCompleteModal(false);
-      setShowDetailModal(false);
-      fetchWorkouts();
-      fetchStats();
-      alert("Workout completed! 🎉");
-    } catch (err) {
-      console.error("Error completing workout:", err);
-      alert("Could not complete workout.");
+      console.error("Error deleting set:", err);
     }
   };
 
   // YENİ ANTRENMAN OLUŞTUR (POST)
   const handleCreateWorkout = async (e) => {
-    e.preventDefault(); // Sayfanın yenilenmesini engelle
+    e.preventDefault();
+
+    // 1. Validation: Don't send empty data
+    if (selectedExercises.length === 0) {
+        alert("Please select at least one exercise.");
+        return;
+    }
+    if (!formData.title) {
+        alert("Please enter a workout name.");
+        return;
+    }
 
     try {
-      // First create a workout template with exercises
+      console.log("Sending Payload...", formData, selectedExercises); // Debug 1
+
       const templatePayload = {
         title: formData.title,
         description: formData.notes,
+        // Ensure sets/reps are numbers/strings as expected
         exercises_data: selectedExercises.map((ex, index) => ({
           exercise: ex.id,
           order: index + 1,
-          sets: ex.sets || 3,
-          reps: ex.reps || "8-12"
+          sets: ex.sets || 3,      // Default to 3 if not set
+          reps: ex.reps || "8-12"  // Default to "8-12" if not set
         }))
       };
 
-      // Create template first
-      const templateResponse = await api.post('workouts/templates/', templatePayload);
+      // 2. Create the Template
+      // Note: Added '/api/' just in case. Remove if your axios config handles it.
+      const templateResponse = await api.post('/workouts/templates/', templatePayload);
+      console.log("Template Created:", templateResponse.data); // Debug 2
       
-      // Then start a session from this template
-      await api.post(`workouts/templates/${templateResponse.data.id}/start_session/`);
+      const templateId = templateResponse.data.id;
 
-      // Başarılı olursa:
-      setShowModal(false); // Modalı kapat
-      setFormData({ title: "", duration: "", notes: "" }); // Formu temizle
-      setSelectedExercises([]); // Seçili egzersizleri temizle
-      fetchWorkouts(); // Antrenmanları yeniden yükle
-      fetchTemplates(); // Refresh templates
+      // 3. Start the Session immediately
+      await api.post(`/workouts/templates/${templateId}/start_session/`);
+      console.log("Session Started Successfully"); // Debug 3
+
+      // 4. Cleanup
+      setShowModal(false);
+      setFormData({ title: "", notes: "" });
+      setSelectedExercises([]);
+      
+      // 5. Refresh Lists
+      // Make sure these functions exist and work!
+      if (typeof fetchWorkouts === 'function') fetchWorkouts(); 
+      if (typeof fetchTemplates === 'function') fetchTemplates();
+      
       alert("Antrenman başarıyla oluşturuldu! 🎉");
 
     } catch (err) {
-      console.error("Oluşturma Hatası:", err);
-      alert("Hata oluştu, lütfen tekrar deneyin.");
+      // IMPROVED ERROR LOGGING
+      console.error("FULL ERROR OBJECT:", err);
+      
+      if (err.response) {
+        // The request was made and the server responded with a status code
+        // that falls out of the range of 2xx
+        console.error("Server Data:", err.response.data);
+        console.error("Server Status:", err.response.status);
+        alert(`Error: ${JSON.stringify(err.response.data)}`); // Show the real error on screen
+      } else if (err.request) {
+        // The request was made but no response was received
+        console.error("No Response:", err.request);
+        alert("Server not responding. Is Django running?");
+      } else {
+        // Something happened in setting up the request
+        console.error("Error Message:", err.message);
+      }
     }
   };
 
@@ -311,6 +350,96 @@ export default function Workout() {
     { id: 'challenges', icon: '🏆', label: 'Challenges', path: '/challenges' },
     { id: 'profile', icon: '👤', label: 'Profile', path: '/profile' }
   ];
+
+  // Start editing a session
+  const startEditSession = () => {
+    if (!selectedWorkout) return;
+    setEditingSession(true);
+  };
+
+  const cancelEditSession = () => setEditingSession(false);
+
+  const saveSession = async () => {
+    if (!selectedWorkout) return;
+    try {
+      await api.patch(`workouts/sessions/${selectedWorkout.id}/update_session/`, sessionForm);
+      const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
+      setSelectedWorkout(response.data);
+      setEditingSession(false);
+      fetchWorkouts();
+      fetchStats();
+    } catch (err) {
+      console.error("Error updating session:", err);
+      alert("Could not update session.");
+    }
+  };
+
+  // Start editing an exercise container
+  const startEditExercise = (ex) => {
+    setEditingExerciseId(ex.id);
+    setEditingExerciseData({ notes: ex.notes || '', order: ex.order || 1 });
+  };
+
+  const cancelEditExercise = () => setEditingExerciseId(null);
+
+  const saveEditExercise = async (exerciseId) => {
+    if (!selectedWorkout) return;
+    try {
+      await api.patch(`workouts/sessions/${selectedWorkout.id}/update_exercise/`, {
+        exercise_id: exerciseId,
+        notes: editingExerciseData.notes,
+        order: editingExerciseData.order
+      });
+      const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
+      setSelectedWorkout(response.data);
+      setEditingExerciseId(null);
+    } catch (err) {
+      console.error("Error updating exercise:", err);
+      alert("Could not update exercise.");
+    }
+  };
+
+  // Delete exercise from session
+  const handleDeleteExercise = async (exerciseId) => {
+    if (!selectedWorkout) return;
+    if (!window.confirm("Delete this exercise and all its sets?")) return;
+    try {
+      await api.delete(`workouts/sessions/${selectedWorkout.id}/delete_exercise/?exercise_id=${exerciseId}`);
+      // Refresh session data
+      const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
+      setSelectedWorkout(response.data);
+      fetchWorkouts();
+      fetchStats();
+    } catch (err) {
+      console.error("Error deleting exercise:", err);
+      alert("Could not delete exercise.");
+    }
+  };
+
+  // Complete workout
+  const handleCompleteWorkout = async () => {
+    if (!selectedWorkout) return;
+    try {
+      // First update duration, mood, notes
+      await api.patch(`workouts/sessions/${selectedWorkout.id}/update_session/`, {
+        duration_minutes: completeForm.duration_minutes,
+        mood_emoji: completeForm.mood_emoji,
+        notes: completeForm.notes
+      });
+      // Then mark as complete
+      await api.post(`workouts/sessions/${selectedWorkout.id}/complete/`);
+      // Refresh data
+      const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
+      setSelectedWorkout(response.data);
+      setShowCompleteModal(false);
+      fetchWorkouts();
+      fetchStats();
+      alert("Workout completed! 🎉");
+    } catch (err) {
+      console.error("Error completing workout:", err);
+      alert("Could not complete workout.");
+    }
+  };
 
   return (
     <div className="workout-container">
@@ -564,91 +693,192 @@ export default function Workout() {
               <div className="logs-header">
                 <h3>Exercise Logs</h3>
                 {!selectedWorkout.is_completed && (
-                  <button className="btn-add-log" onClick={() => setShowAddLogForm(true)}>
+                  <button className="btn-add-log" onClick={() => setShowAddSetForm(true)}>
                     + Add Set
                   </button>
                 )}
               </div>
 
-              {/* Add Log Form */}
-              {showAddLogForm && (
-                <div className="add-log-form">
+              {/* Add Set Form */}
+              {showAddSetForm && (
+                <div className="add-set-form">
                   <select 
                     className="form-input"
-                    value={newLog.exercise}
-                    onChange={(e) => setNewLog({...newLog, exercise: parseInt(e.target.value)})}
+                    value={newSet.exercise_id}
+                    onChange={(e) => setNewSet({...newSet, exercise_id: parseInt(e.target.value)})}
                   >
                     <option value="">Select Exercise</option>
+                    {selectedWorkout?.exercises?.map(ex => (
+                      <option key={ex.id} value={ex.exercise}>{ex.exercise_name}</option>
+                    ))}
                     {availableExercises.map(ex => (
                       <option key={ex.id} value={ex.id}>{ex.name}</option>
                     ))}
                   </select>
-                  <input
-                    type="number"
-                    className="form-input input-small"
-                    placeholder="Set #"
-                    value={newLog.set_number}
-                    onChange={(e) => setNewLog({...newLog, set_number: parseInt(e.target.value) || 1})}
-                  />
+
                   <input
                     type="number"
                     className="form-input input-small"
                     placeholder="Weight"
-                    value={newLog.weight_kg}
-                    onChange={(e) => setNewLog({...newLog, weight_kg: parseFloat(e.target.value) || 0})}
+                    value={newSet.weight_kg}
+                    onChange={(e) => setNewSet({...newSet, weight_kg: parseFloat(e.target.value) || 0})}
                   />
                   <input
                     type="number"
                     className="form-input input-small"
                     placeholder="Reps"
-                    value={newLog.reps}
-                    onChange={(e) => setNewLog({...newLog, reps: parseInt(e.target.value) || 0})}
+                    value={newSet.reps}
+                    onChange={(e) => setNewSet({...newSet, reps: parseInt(e.target.value) || 0})}
                   />
-                  <button className="btn-save-small" onClick={handleAddLog}>Add</button>
-                  <button className="btn-cancel-small" onClick={() => setShowAddLogForm(false)}>Cancel</button>
+                  <input
+                    type="number"
+                    className="form-input input-small"
+                    placeholder="RPE"
+                    value={newSet.rpe}
+                    onChange={(e) => setNewSet({...newSet, rpe: parseInt(e.target.value) || 0})}
+                  />
+                  <button className="btn-save-small" onClick={handleAddSet}>Add</button>
+                  <button className="btn-cancel-small" onClick={() => setShowAddSetForm(false)}>Cancel</button>
                 </div>
               )}
 
-              {/* Logs List */}
-              <div className="logs-list">
-                {selectedWorkout.logs && selectedWorkout.logs.length > 0 ? (
-                  selectedWorkout.logs.map((log) => (
-                    <div key={log.id} className="log-item">
-                      <div className="log-info">
-                        <span className="log-exercise-name">{log.exercise_name}</span>
-                        <span className="log-category-badge" style={{backgroundColor: getCategoryColor(log.category) + '20', color: getCategoryColor(log.category)}}>
-                          {log.category}
-                        </span>
+              {/* Exercises + Sets List */}
+              <div className="exercises-list">
+                {selectedWorkout.exercises && selectedWorkout.exercises.length > 0 ? (
+                  selectedWorkout.exercises.map((ex) => (
+                    <div key={ex.id} className="exercise-block">
+                      <div className="exercise-header">
+                        <span className="exercise-name">{ex.exercise_name}</span>
+                        <span className="exercise-category" style={{backgroundColor: getCategoryColor(ex.category) + '20', color: getCategoryColor(ex.category)}}>{ex.category}</span>
+                        {!selectedWorkout.is_completed && (
+                          <button className='btn-add-small' onClick={() => {
+                            // Open add form and preselect this exercise
+                            setNewSet({...newSet, exercise_id: ex.exercise});
+                            setShowAddSetForm(true);
+                          }}>+ Add Set</button>
+                        )}
+                        {!selectedWorkout.is_completed && (
+                          <button className='btn-edit-small' onClick={() => startEditExercise(ex)}>Edit</button>
+                        )}
+                        {!selectedWorkout.is_completed && (
+                          <button className='btn-delete-small' onClick={() => handleDeleteExercise(ex.id)}>🗑️</button>
+                        )}
                       </div>
-                      <div className="log-details">
-                        <span className="log-set">Set {log.set_number}</span>
-                        {log.weight_kg > 0 && <span className="log-weight">{log.weight_kg} kg</span>}
-                        <span className="log-reps">{log.reps} reps</span>
+
+                      <div className="sets-list">
+                        {ex.sets && ex.sets.length > 0 ? (
+                          ex.sets.map((s) => (
+                            <div key={s.id} className="set-item">
+                              <div className="set-info">
+                                <span>Set {s.set_number}</span>
+                                {s.weight_kg > 0 && <span>{s.weight_kg} kg</span>}
+                                <span>{s.reps} reps</span>
+                                {s.rpe != null && <span>RPE {s.rpe}</span>}
+                              </div>
+
+                              {!selectedWorkout.is_completed && (
+                                <div className="set-actions">
+                                  {editingSetId === s.id ? (
+                                    <div className="edit-set-form">
+                                      <input
+                                        type="number"
+                                        className="form-input input-small"
+                                        placeholder="Weight"
+                                        value={editingSetData.weight_kg}
+                                        onChange={(e) => setEditingSetData({...editingSetData, weight_kg: parseFloat(e.target.value) || 0})}
+                                      />
+                                      <input
+                                        type="number"
+                                        className="form-input input-small"
+                                        placeholder="Reps"
+                                        value={editingSetData.reps}
+                                        onChange={(e) => setEditingSetData({...editingSetData, reps: parseInt(e.target.value) || 0})}
+                                      />
+                                      <input
+                                        type="number"
+                                        className="form-input input-small"
+                                        placeholder="RPE"
+                                        value={editingSetData.rpe}
+                                        onChange={(e) => setEditingSetData({...editingSetData, rpe: parseInt(e.target.value) || 0})}
+                                      />
+                                      <button className="btn-save-small" onClick={() => handleUpdateSet(s.id, editingSetData)}>Save</button>
+                                      <button className="btn-cancel-small" onClick={() => setEditingSetId(null)}>Cancel</button>
+                                    </div>
+                                  ) : (
+                                    <>
+                                      <button className="btn-icon" onClick={() => {
+                                        setEditingSetId(s.id);
+                                        setEditingSetData({ weight_kg: s.weight_kg, reps: s.reps, rpe: s.rpe });
+                                      }}>&#x270F;&#xFE0F;</button>
+                                      <button className="btn-icon" onClick={() => handleDeleteSet(s.id)}>🗑️</button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          ))
+                        ) : (
+                          <p className="no-sets">No sets logged yet for this exercise.</p>
+                        )}
                       </div>
-                      {!selectedWorkout.is_completed && (
-                        <div className="log-actions">
-                          <button 
-                            className="btn-icon"
-                            onClick={() => handleDeleteLog(log.id)}
-                          >
-                            🗑️
-                          </button>
+                      {editingExerciseId === ex.id && (
+                        <div className="edit-exercise-form">
+                          <div className="form-group">
+                            <label className="form-label">Notes</label>
+                            <textarea
+                              className="form-textarea"
+                              rows="2"
+                              value={editingExerciseData.notes}
+                              onChange={(e) => setEditingExerciseData({...editingExerciseData, notes: e.target.value})}
+                            ></textarea>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">Order</label>
+                            <input
+                              type="number"
+                              className="form-input"
+                              value={editingExerciseData.order}
+                              onChange={(e) => setEditingExerciseData({...editingExerciseData, order: parseInt(e.target.value) || 1})}
+                            />
+                          </div>
+                          <div className="edit-exercise-actions">
+                            <button className="btn-save-small" onClick={() => saveEditExercise(ex.id)}>Save</button>
+                            <button className="btn-cancel-small" onClick={cancelEditExercise}>Cancel</button>
+                          </div>
                         </div>
                       )}
                     </div>
                   ))
                 ) : (
-                  <p className="no-logs">No sets logged yet. Add your first set!</p>
+                  <p className="no-sets">No exercises found for this session.</p>
                 )}
               </div>
             </div>
 
             {/* Notes Section */}
-            {selectedWorkout.notes && (
+            {editingSession ? (
               <div className="notes-section">
-                <h4>Notes</h4>
-                <p>{selectedWorkout.notes}</p>
+                <h4>Edit Session</h4>
+                <div className="form-group">
+                  <label className="form-label">Title</label>
+                  <input className="form-input" value={sessionForm.title} onChange={(e) => setSessionForm({...sessionForm, title: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Duration (minutes)</label>
+                  <input type="number" className="form-input" value={sessionForm.duration_minutes} onChange={(e) => setSessionForm({...sessionForm, duration_minutes: parseInt(e.target.value) || 0})} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Notes</label>
+                  <textarea className="form-textarea" rows="3" value={sessionForm.notes} onChange={(e) => setSessionForm({...sessionForm, notes: e.target.value})}></textarea>
+                </div>
               </div>
+            ) : (
+              selectedWorkout.notes && (
+                <div className="notes-section">
+                  <h4>Notes</h4>
+                  <p>{selectedWorkout.notes}</p>
+                </div>
+              )
             )}
 
             {/* Actions */}
@@ -657,19 +887,31 @@ export default function Workout() {
                 Close
               </button>
               {!selectedWorkout.is_completed && (
-                <button 
-                  className="btn-save" 
-                  onClick={() => {
-                    setCompleteForm({
-                      duration_minutes: selectedWorkout.duration_minutes || 0,
-                      mood_emoji: "💪",
-                      notes: selectedWorkout.notes || ""
-                    });
-                    setShowCompleteModal(true);
-                  }}
-                >
-                  Complete Workout
-                </button>
+                <>
+                  {!editingSession ? (
+                    <>
+                      <button 
+                        className="btn-save" 
+                        onClick={() => {
+                          setCompleteForm({
+                            duration_minutes: selectedWorkout.duration_minutes || 0,
+                            mood_emoji: "💪",
+                            notes: selectedWorkout.notes || ""
+                          });
+                          setShowCompleteModal(true);
+                        }}
+                      >
+                        Complete Workout
+                      </button>
+                      <button className="btn-edit" onClick={startEditSession}>Edit</button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn-save" onClick={saveSession}>Save</button>
+                      <button className="btn-cancel" onClick={cancelEditSession}>Cancel</button>
+                    </>
+                  )}
+                </>
               )}
             </div>
           </div>
