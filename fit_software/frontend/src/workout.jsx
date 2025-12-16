@@ -19,10 +19,19 @@ export default function Workout() {
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
+  const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
+  const [selectedSession, setSelectedSession] = useState(null);
   const [viewMode, setViewMode] = useState('sessions'); // 'sessions' or 'templates'
   
   const [formData, setFormData] = useState({
+    title: "",
+    duration: "",
+    notes: ""
+  });
+  const [editFormData, setEditFormData] = useState({
     title: "",
     duration: "",
     notes: ""
@@ -134,6 +143,94 @@ export default function Workout() {
     } catch (err) {
       console.error("Error fetching workout details:", err);
       alert("Could not load workout details.");
+    }
+  };
+
+  // SESSION DETAYLARINI GÖSTER (VIEW)
+  const handleViewDetails = (session) => {
+    console.log("View Details clicked for session:", session);
+    setSelectedSession(session);
+    setShowDetailsModal(true);
+    console.log("Details modal should be open now");
+  };
+
+  // SESSION DÜZENLE (PUT/PATCH)
+  const handleEditSession = (session) => {
+    console.log("Edit clicked for session:", session);
+    setSelectedSession(session);
+    setEditFormData({
+      title: session.title || "",
+      duration: session.duration_minutes || "",
+      notes: session.notes || ""
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateWorkout = async (e) => {
+    e.preventDefault();
+
+    try {
+      const payload = {
+        title: editFormData.title,
+        duration_minutes: parseInt(editFormData.duration) || 0,
+        notes: editFormData.notes
+      };
+
+      console.log("Updating session:", selectedSession.id, payload);
+      const response = await api.patch(`workouts/sessions/${selectedSession.id}/`, payload);
+      console.log("Update response:", response);
+
+      setShowEditModal(false);
+      setSelectedSession(null);
+      setEditFormData({ title: "", duration: "", notes: "" });
+      fetchWorkouts();
+      alert("Antrenman başarıyla güncellendi! ✅");
+
+    } catch (err) {
+      console.error("Güncelleme Hatası:", err);
+      console.error("Error details:", err.response?.data);
+      alert(`Hata oluştu: ${err.response?.data?.detail || err.message || "Lütfen tekrar deneyin."}`);
+    }
+  };
+
+  // SESSION SİL (DELETE)
+  const handleDeleteClick = (session) => {
+    setSelectedSession(session);
+    setShowDeleteConfirm(true);
+  };
+
+  const handleDeleteConfirm = async () => {
+    try {
+      console.log("Deleting session:", selectedSession.id);
+      const response = await api.delete(`workouts/sessions/${selectedSession.id}/`);
+      console.log("Delete response:", response);
+      setShowDeleteConfirm(false);
+      setSelectedSession(null);
+      fetchWorkouts();
+      alert("Antrenman başarıyla silindi! 🗑️");
+
+    } catch (err) {
+      console.error("Silme Hatası:", err);
+      console.error("Error details:", err.response?.data);
+      alert(`Hata oluştu: ${err.response?.data?.detail || err.message || "Lütfen tekrar deneyin."}`);
+    }
+  };
+
+  // SESSION TAMAMLA (TOGGLE is_completed)
+  const handleCompleteSession = async (session) => {
+    try {
+      console.log("Completing session:", session.id, "Current status:", session.is_completed);
+      const response = await api.patch(`workouts/sessions/${session.id}/`, {
+        is_completed: !session.is_completed
+      });
+      console.log("Complete response:", response);
+      fetchWorkouts();
+      alert(session.is_completed ? "Antrenman aktif hale getirildi! 🔄" : "Antrenman tamamlandı! ✅");
+
+    } catch (err) {
+      console.error("Tamamlama Hatası:", err);
+      console.error("Error details:", err.response?.data);
+      alert(`Hata oluştu: ${err.response?.data?.detail || err.message || "Lütfen tekrar deneyin."}`);
     }
   };
 
@@ -541,59 +638,137 @@ export default function Workout() {
           {loading && <p style={{textAlign:'center', padding:'20px'}}>Loading sessions...</p>}
           {error && <p style={{textAlign:'center', color:'red'}}>{error}</p>}
 
-          {/* Sessions View */}
+          {/* Sessions View - Table Format */}
           {!loading && !error && viewMode === 'sessions' && (
-            <div className="workouts-grid">
+            <div className="workouts-table-container">
               {workouts.length === 0 ? (
-                <div style={{gridColumn: '1/-1', textAlign:'center', padding:'40px', background:'white', borderRadius:'12px'}}>
+                <div style={{textAlign:'center', padding:'40px', background:'white', borderRadius:'12px'}}>
                   <p>No workout sessions found. Create your first one!</p>
                 </div>
               ) : (
-                workouts.map((workout) => (
-                  <div key={workout.id} className="workout-card">
-                    <div className="workout-card-header">
-                      <span className={`status-badge ${workout.is_completed ? 'completed' : 'in-progress'}`}>
-                        {workout.is_completed ? '✓ Completed' : '🔄 In Progress'}
-                      </span>
-                      {workout.mood_emoji && <span className="mood-emoji">{workout.mood_emoji}</span>}
-                    </div>
-                    <div className="workout-card-content">
-                      <h3 className="workout-card-title">{workout.title}</h3>
-                      <p className="workout-card-date">{workout.formatted_date}</p>
+                <table className="workouts-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Title</th>
+                      <th>Duration</th>
+                      <th>Exercises</th>
+                      <th>Status</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workouts.map((session) => {
+                      const uniqueExercises = session.logs 
+                        ? [...new Set(session.logs.map(log => log.exercise_name))].length 
+                        : 0;
+                      const totalSets = session.logs ? session.logs.length : 0;
                       
-                      <div className="workout-card-stats">
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.total_exercises || 0}</span>
-                          <span className="mini-stat-label">Exercises</span>
-                        </div>
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.total_sets || 0}</span>
-                          <span className="mini-stat-label">Sets</span>
-                        </div>
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.total_reps || 0}</span>
-                          <span className="mini-stat-label">Reps</span>
-                        </div>
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.duration_minutes || 0}</span>
-                          <span className="mini-stat-label">Min</span>
-                        </div>
-                      </div>
-                      
-                      {workout.total_volume > 0 && (
-                        <div className="volume-bar">
-                          <span>Total Volume: {Math.round(workout.total_volume).toLocaleString()} kg</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="workout-card-actions">
-                      <button className="btn-view" onClick={() => handleViewWorkout(workout)}>
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))
+                      return (
+                        <tr key={session.id} className={session.is_completed ? 'completed' : 'active'}>
+                          <td className="table-date">{session.formatted_date || 'N/A'}</td>
+                          <td className="table-title">{session.title}</td>
+                          <td className="table-duration">
+                            {session.duration_minutes ? `${session.duration_minutes} min` : '0 min'}
+                          </td>
+                          <td className="table-exercises">
+                            {uniqueExercises > 0 ? (
+                              <span>{uniqueExercises} exercise{uniqueExercises > 1 ? 's' : ''} ({totalSets} sets)</span>
+                            ) : (
+                              <span style={{color: '#94a3b8'}}>No exercises</span>
+                            )}
+                          </td>
+                          <td className="table-status">
+                            <span className={`status-badge ${session.is_completed ? 'status-completed' : 'status-active'}`}>
+                              {session.is_completed ? '✓ Completed' : '○ Active'}
+                            </span>
+                          </td>
+                          <td className="table-actions">
+                            <button 
+                              className="btn-table-view" 
+                              onClick={() => handleViewDetails(session)}
+                              title="View Details"
+                              style={{
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontWeight: '600',
+                                fontSize: '0.7rem',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                minWidth: '50px',
+                                height: '32px',
+                                marginRight: '0.4rem'
+                              }}
+                            >
+                              View
+                            </button>
+                            <button 
+                              className="btn-table-edit" 
+                              onClick={() => handleEditSession(session)}
+                              title="Edit"
+                              style={{
+                                backgroundColor: '#fbbf24',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                minWidth: '35px',
+                                height: '32px',
+                                marginRight: '0.4rem'
+                              }}
+                            >
+                              ✏️
+                            </button>
+                            <button 
+                              className="btn-table-complete" 
+                              onClick={() => handleCompleteSession(session)}
+                              title={session.is_completed ? "Mark as Active" : "Mark as Completed"}
+                              style={{
+                                backgroundColor: '#10b981',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                minWidth: '35px',
+                                height: '32px',
+                                marginRight: '0.4rem'
+                              }}
+                            >
+                              {session.is_completed ? "↩️" : "✓"}
+                            </button>
+                            <button 
+                              className="btn-table-delete" 
+                              onClick={() => handleDeleteClick(session)}
+                              title="Delete"
+                              style={{
+                                backgroundColor: '#ef4444',
+                                color: 'white',
+                                border: 'none',
+                                padding: '0.4rem 0.6rem',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem',
+                                minWidth: '35px',
+                                height: '32px'
+                              }}
+                            >
+                              🗑️
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               )}
             </div>
           )}
@@ -1139,6 +1314,191 @@ export default function Workout() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT MODAL */}
+      {showEditModal && selectedSession && (
+        <div className="modal-overlay" onClick={() => { setShowEditModal(false); setSelectedSession(null); }}>
+          <div className="modal-content" onClick={e => e.stopPropagation()}>
+            <h2 className="modal-title">Edit Workout</h2>
+            
+            <form onSubmit={handleUpdateWorkout}>
+              <div className="form-group">
+                <label className="form-label">Workout Title</label>
+                <input 
+                  type="text" 
+                  className="form-input"
+                  placeholder="e.g. Leg Day"
+                  value={editFormData.title}
+                  onChange={(e) => setEditFormData({...editFormData, title: e.target.value})}
+                  required
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Duration (minutes)</label>
+                <input 
+                  type="number" 
+                  className="form-input"
+                  placeholder="45"
+                  value={editFormData.duration}
+                  onChange={(e) => setEditFormData({...editFormData, duration: e.target.value})}
+                />
+              </div>
+
+              <div className="form-group">
+                <label className="form-label">Description / Notes</label>
+                <textarea 
+                  className="form-textarea"
+                  rows="3"
+                  placeholder="Details about the workout..."
+                  value={editFormData.notes}
+                  onChange={(e) => setEditFormData({...editFormData, notes: e.target.value})}
+                ></textarea>
+              </div>
+
+              <div className="modal-actions">
+                <button type="button" className="btn-cancel" onClick={() => { setShowEditModal(false); setSelectedSession(null); }}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-save">
+                  Update Workout
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE CONFIRMATION MODAL */}
+      {showDeleteConfirm && selectedSession && (
+        <div className="modal-overlay" onClick={() => { setShowDeleteConfirm(false); setSelectedSession(null); }}>
+          <div className="modal-content modal-delete" onClick={e => e.stopPropagation()}>
+            <h2 className="modal-title">Delete Workout</h2>
+            <p style={{marginBottom: '1.5rem', color: '#64748b'}}>
+              Are you sure you want to delete <strong>"{selectedSession.title}"</strong>? This action cannot be undone.
+            </p>
+            <div className="modal-actions">
+              <button type="button" className="btn-cancel" onClick={() => { setShowDeleteConfirm(false); setSelectedSession(null); }}>
+                Cancel
+              </button>
+              <button type="button" className="btn-delete" onClick={handleDeleteConfirm}>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAILS MODAL */}
+      {showDetailsModal && selectedSession && (
+        <div className="modal-overlay" onClick={() => { setShowDetailsModal(false); setSelectedSession(null); }}>
+          <div className="modal-content modal-details" onClick={e => e.stopPropagation()}>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+              <h2 className="modal-title" style={{margin: 0}}>Workout Details</h2>
+              <button 
+                onClick={() => { setShowDetailsModal(false); setSelectedSession(null); }}
+                style={{background: 'none', border: 'none', fontSize: '1.5rem', cursor: 'pointer', color: '#64748b'}}
+              >
+                ×
+              </button>
+            </div>
+
+            <div className="details-section">
+              <div className="details-row">
+                <span className="details-label">Title:</span>
+                <span className="details-value">{selectedSession.title}</span>
+              </div>
+              <div className="details-row">
+                <span className="details-label">Date:</span>
+                <span className="details-value">{selectedSession.formatted_date || 'N/A'}</span>
+              </div>
+              <div className="details-row">
+                <span className="details-label">Duration:</span>
+                <span className="details-value">{selectedSession.duration_minutes ? `${selectedSession.duration_minutes} minutes` : '0 minutes'}</span>
+              </div>
+              <div className="details-row">
+                <span className="details-label">Status:</span>
+                <span className={`status-badge ${selectedSession.is_completed ? 'status-completed' : 'status-active'}`}>
+                  {selectedSession.is_completed ? '✓ Completed' : '○ Active'}
+                </span>
+              </div>
+              {selectedSession.notes && (
+                <div className="details-row">
+                  <span className="details-label">Notes:</span>
+                  <span className="details-value" style={{whiteSpace: 'pre-wrap'}}>{selectedSession.notes}</span>
+                </div>
+              )}
+            </div>
+
+            {selectedSession.logs && selectedSession.logs.length > 0 ? (
+              <div className="details-section" style={{marginTop: '2rem'}}>
+                <h3 style={{marginBottom: '1rem', color: '#1e293b', fontSize: '1.125rem'}}>Exercise Logs</h3>
+                <div className="logs-container">
+                  {(() => {
+                    // Group logs by exercise
+                    const groupedLogs = {};
+                    selectedSession.logs.forEach(log => {
+                      if (!groupedLogs[log.exercise_name]) {
+                        groupedLogs[log.exercise_name] = [];
+                      }
+                      groupedLogs[log.exercise_name].push(log);
+                    });
+
+                    return Object.entries(groupedLogs).map(([exerciseName, logs]) => (
+                      <div key={exerciseName} className="exercise-group">
+                        <h4 className="exercise-name">{exerciseName}</h4>
+                        <table className="logs-table">
+                          <thead>
+                            <tr>
+                              <th>Set</th>
+                              <th>Weight (kg)</th>
+                              <th>Reps</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {logs.map((log, idx) => (
+                              <tr key={log.id || idx}>
+                                <td>{log.set_number}</td>
+                                <td>{log.weight_kg || '-'}</td>
+                                <td>{log.reps || '-'}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ));
+                  })()}
+                </div>
+              </div>
+            ) : (
+              <div className="details-section" style={{marginTop: '2rem', textAlign: 'center', padding: '2rem', color: '#94a3b8'}}>
+                <p>No exercise logs found for this session.</p>
+              </div>
+            )}
+
+            <div className="modal-actions" style={{marginTop: '2rem', justifyContent: 'flex-end'}}>
+              <button 
+                type="button" 
+                className="btn-cancel" 
+                onClick={() => { setShowDetailsModal(false); setSelectedSession(null); }}
+              >
+                Close
+              </button>
+              <button 
+                type="button" 
+                className="btn-table-edit" 
+                onClick={() => {
+                  setShowDetailsModal(false);
+                  handleEditSession(selectedSession);
+                }}
+                style={{marginLeft: '0.5rem', backgroundColor: '#fbbf24', color: 'white', border: 'none', padding: '0.5rem 1rem', borderRadius: '6px', cursor: 'pointer'}}
+              >
+                ✏️ Edit
+              </button>
+            </div>
           </div>
         </div>
       )}

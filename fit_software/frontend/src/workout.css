@@ -136,92 +136,136 @@
   background-color: #1d4ed8;
 }
 
-/* YENİ GRID VE KART YAPISI */
-.workouts-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.workout-card {
+/* TABLO GÖRÜNÜMÜ */
+.workouts-table-container {
   background: white;
-  border: 1px solid #e2e8f0;
-  border-radius: 16px;
-  padding: 1.5rem;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  transition: transform 0.2s, box-shadow 0.2s;
+  border-radius: 12px;
+  overflow-x: auto;
+  overflow-y: visible;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
-.workout-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-}
-
-.workout-card-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  color: #1e293b;
-  margin-bottom: 0.5rem;
-}
-
-.workout-card-description {
-  color: #64748b;
-  font-size: 0.875rem;
-  margin-bottom: 1.5rem;
-  line-height: 1.4;
-  min-height: 40px; /* Kısa açıklamalarda kart boyunu korumak için */
-}
-
-.workout-card-details {
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1.5rem;
-  color: #64748b;
+.workouts-table {
+  width: 100%;
+  min-width: 800px;
+  border-collapse: collapse;
   font-size: 0.875rem;
 }
 
-.detail-item {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.workout-card-actions {
-  display: flex;
-  gap: 1rem;
-}
-
-.btn-start, .btn-view {
-  flex: 1;
-  padding: 0.75rem;
-  border-radius: 8px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 0.875rem;
-}
-
-.btn-start {
-  background-color: #2563eb;
-  color: white;
-  border: none;
-}
-
-.btn-start:hover {
-  background-color: #1d4ed8;
-}
-
-.btn-view {
-  background-color: white;
-  color: #2563eb;
-  border: 1px solid #e2e8f0;
-}
-
-.btn-view:hover {
+.workouts-table thead {
   background-color: #f8f9fa;
-  border-color: #cbd5e1;
+  border-bottom: 2px solid #e2e8f0;
+}
+
+.workouts-table th {
+  padding: 1rem;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.workouts-table th:last-child {
+  min-width: 280px;
+  position: sticky;
+  right: 0;
+  background-color: #f8f9fa;
+  z-index: 10;
+}
+
+.workouts-table td:last-child {
+  position: sticky;
+  right: 0;
+  background-color: white;
+  z-index: 5;
+}
+
+.workouts-table tbody tr.active td:last-child {
+  background-color: #fef3c7;
+}
+
+.workouts-table tbody tr.active:hover td:last-child {
+  background-color: #fde68a;
+}
+
+.workouts-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.15s;
+}
+
+.workouts-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.workouts-table tbody tr.completed {
+  opacity: 0.9;
+}
+
+.workouts-table tbody tr.active {
+  background-color: #fef3c7;
+}
+
+.workouts-table tbody tr.active:hover {
+  background-color: #fde68a;
+}
+
+.workouts-table td {
+  padding: 1rem;
+  color: #1e293b;
+  vertical-align: middle;
+}
+
+.table-date {
+  color: #64748b;
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+.table-title {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.table-duration {
+  color: #64748b;
+}
+
+.table-exercises {
+  color: #64748b;
+  font-size: 0.8125rem;
+}
+
+.table-status {
+  white-space: nowrap;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.75rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-completed {
+  background-color: #d1fae5;
+  color: #065f46;
+}
+
+.status-active {
+  background-color: #dbeafe;
+  color: #1e40af;
+}
+
+.table-actions {
+  white-space: nowrap;
+  display: flex;
+  gap: 0.4rem;
+  align-items: center;
+  flex-wrap: wrap;
+  min-width: 250px;
 }
 
 /* --- MODAL (POPUP) STYLES --- */
@@ -319,6 +363,109 @@
 .btn-save:disabled {
   background: #94a3b8;
   cursor: not-allowed;
+}
+
+.modal-delete {
+  max-width: 400px;
+}
+
+.btn-delete {
+  padding: 0.75rem 1.5rem;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background: #dc2626;
+}
+
+/* DETAILS MODAL STYLES */
+.modal-details {
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.details-section {
+  margin-bottom: 1.5rem;
+}
+
+.details-row {
+  display: flex;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #e2e8f0;
+  align-items: flex-start;
+}
+
+.details-row:last-child {
+  border-bottom: none;
+}
+
+.details-label {
+  font-weight: 600;
+  color: #475569;
+  min-width: 120px;
+  margin-right: 1rem;
+}
+
+.details-value {
+  color: #1e293b;
+  flex: 1;
+}
+
+.logs-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.exercise-group {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.exercise-name {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin-bottom: 0.75rem;
+}
+
+.logs-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.logs-table thead {
+  background-color: #f1f5f9;
+}
+
+.logs-table th {
+  padding: 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: #475569;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.logs-table td {
+  padding: 0.75rem;
+  color: #1e293b;
+  border-top: 1px solid #e2e8f0;
+}
+
+.logs-table tbody tr:hover {
+  background-color: #f8f9fa;
 }
 
 /* Exercise Search & Dropdown */
