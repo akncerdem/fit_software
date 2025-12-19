@@ -27,6 +27,9 @@ fit_software/
 
 ## Quickstart
 
+# Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+
+
 ### 1) Backend (Django API)
 ```bash
 cd backend
