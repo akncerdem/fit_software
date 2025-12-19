@@ -4,6 +4,7 @@ from dotenv import load_dotenv
 from urllib.parse import urlparse
 from decouple import config
 import warnings
+import dj_database_url
 
 # Suppress urllib3 warnings about LibreSSL
 warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL 1.1.1+')
@@ -125,10 +126,11 @@ if DATABASE_URL:
     }
 else:
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+        'default': dj_database_url.config(
+            # Replace this string with the one you copied from Neon
+            default='postgresql://neondb_owner:npg_NtHduUS6w2LD@ep-billowing-brook-ahh4cpxc-pooler.c-3.us-east-1.aws.neon.tech/Db?sslmode=require&channel_binding=require',
+            conn_max_age=600
+        )
     }
 
 AUTH_PASSWORD_VALIDATORS = [
