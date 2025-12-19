@@ -1,6 +1,6 @@
 // src/api.js
 // Bu dosya yalnızca Login sayfasında ihtiyaç duyulan basit istekleri içerir.
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
+export const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:8000";
 
 // Sağlık kontrolü (örn. /api/health/ uç noktası)
 export async function getHealth() {
