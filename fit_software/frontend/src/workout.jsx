@@ -57,6 +57,15 @@ export default function Workout() {
   const [editingExerciseId, setEditingExerciseId] = useState(null);
   const [editingExerciseData, setEditingExerciseData] = useState({ notes: '', order: 1 });
 
+  // Template detail/edit modal states
+  const [showTemplateDetailModal, setShowTemplateDetailModal] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState(null);
+  const [editingTemplate, setEditingTemplate] = useState(false);
+  const [templateForm, setTemplateForm] = useState({ title: '', description: '' });
+  const [templateExercises, setTemplateExercises] = useState([]);
+  const [templateExerciseSearch, setTemplateExerciseSearch] = useState('');
+  const [showTemplateExerciseDropdown, setShowTemplateExerciseDropdown] = useState(false);
+
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
     if (!token) {
@@ -441,6 +450,139 @@ export default function Workout() {
     }
   };
 
+  // ========== TEMPLATE FUNCTIONS ==========
+  
+  // View template details
+  const handleViewTemplate = async (template) => {
+    try {
+      const response = await api.get(`workouts/templates/${template.id}/`);
+      setSelectedTemplate(response.data);
+      setTemplateForm({
+        title: response.data.title || '',
+        description: response.data.description || ''
+      });
+      // Convert exercises to editable format
+      const exercises = (response.data.exercises || []).map(ex => ({
+        id: ex.exercise,
+        name: ex.exercise_name,
+        category: ex.category,
+        sets: ex.sets || 3,
+        reps: ex.target_reps || 0,
+        order: ex.order
+      }));
+      setTemplateExercises(exercises);
+      setEditingTemplate(false);
+      setShowTemplateDetailModal(true);
+    } catch (err) {
+      console.error("Error fetching template:", err);
+      alert("Could not load template details.");
+    }
+  };
+
+  // Start editing template
+  const startEditTemplate = () => {
+    setEditingTemplate(true);
+  };
+
+  const cancelEditTemplate = () => {
+    // Reset to original values
+    if (selectedTemplate) {
+      setTemplateForm({
+        title: selectedTemplate.title || '',
+        description: selectedTemplate.description || ''
+      });
+      const exercises = (selectedTemplate.exercises || []).map(ex => ({
+        id: ex.exercise,
+        name: ex.exercise_name,
+        category: ex.category,
+        sets: ex.sets || 3,
+        reps: ex.target_reps || 0,
+        order: ex.order
+      }));
+      setTemplateExercises(exercises);
+    }
+    setEditingTemplate(false);
+  };
+
+  // Save template changes
+  const saveTemplate = async () => {
+    if (!selectedTemplate) return;
+    if (templateExercises.length === 0) {
+      alert("Please add at least one exercise.");
+      return;
+    }
+    try {
+      const payload = {
+        title: templateForm.title,
+        description: templateForm.description,
+        exercises_data: templateExercises.map((ex, index) => ({
+          exercise: ex.id,
+          order: index + 1,
+          sets: ex.sets || 3,
+          reps: String(ex.reps || 0)
+        }))
+      };
+      await api.put(`workouts/templates/${selectedTemplate.id}/`, payload);
+      // Refresh template data
+      const response = await api.get(`workouts/templates/${selectedTemplate.id}/`);
+      setSelectedTemplate(response.data);
+      setEditingTemplate(false);
+      fetchTemplates();
+      alert("Template updated! ✅");
+    } catch (err) {
+      console.error("Error updating template:", err);
+      alert("Could not update template.");
+    }
+  };
+
+  // Delete template
+  const handleDeleteTemplate = async () => {
+    if (!selectedTemplate) return;
+    if (!window.confirm("Delete this template? This cannot be undone.")) return;
+    try {
+      await api.delete(`workouts/templates/${selectedTemplate.id}/`);
+      setShowTemplateDetailModal(false);
+      setSelectedTemplate(null);
+      fetchTemplates();
+      alert("Template deleted.");
+    } catch (err) {
+      console.error("Error deleting template:", err);
+      alert("Could not delete template.");
+    }
+  };
+
+  // Add exercise to template (when editing)
+  const addExerciseToTemplate = (exercise) => {
+    if (!templateExercises.find(ex => ex.id === exercise.id)) {
+      setTemplateExercises([...templateExercises, { 
+        id: exercise.id, 
+        name: exercise.name, 
+        category: exercise.category,
+        sets: 3, 
+        reps: 10 
+      }]);
+    }
+    setTemplateExerciseSearch('');
+    setShowTemplateExerciseDropdown(false);
+  };
+
+  // Remove exercise from template
+  const removeExerciseFromTemplate = (exerciseId) => {
+    setTemplateExercises(templateExercises.filter(ex => ex.id !== exerciseId));
+  };
+
+  // Update exercise details in template
+  const updateTemplateExercise = (exerciseId, field, value) => {
+    setTemplateExercises(templateExercises.map(ex => 
+      ex.id === exerciseId ? { ...ex, [field]: value } : ex
+    ));
+  };
+
+  // Filtered exercises for template editing
+  const filteredTemplateExercises = availableExercises.filter(ex => 
+    ex.name.toLowerCase().includes(templateExerciseSearch.toLowerCase())
+  );
+
   return (
     <div className="workout-container">
       {/* Sidebar  */}
@@ -541,59 +683,51 @@ export default function Workout() {
           {loading && <p style={{textAlign:'center', padding:'20px'}}>Loading sessions...</p>}
           {error && <p style={{textAlign:'center', color:'red'}}>{error}</p>}
 
-          {/* Sessions View */}
+          {/* Sessions View - Table Layout */}
           {!loading && !error && viewMode === 'sessions' && (
-            <div className="workouts-grid">
+            <div className="sessions-table-container">
               {workouts.length === 0 ? (
-                <div style={{gridColumn: '1/-1', textAlign:'center', padding:'40px', background:'white', borderRadius:'12px'}}>
+                <div style={{textAlign:'center', padding:'40px', background:'white', borderRadius:'12px'}}>
                   <p>No workout sessions found. Create your first one!</p>
                 </div>
               ) : (
-                workouts.map((workout) => (
-                  <div key={workout.id} className="workout-card">
-                    <div className="workout-card-header">
-                      <span className={`status-badge ${workout.is_completed ? 'completed' : 'in-progress'}`}>
-                        {workout.is_completed ? '✓ Completed' : '🔄 In Progress'}
-                      </span>
-                      {workout.mood_emoji && <span className="mood-emoji">{workout.mood_emoji}</span>}
-                    </div>
-                    <div className="workout-card-content">
-                      <h3 className="workout-card-title">{workout.title}</h3>
-                      <p className="workout-card-date">{workout.formatted_date}</p>
-                      
-                      <div className="workout-card-stats">
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.total_exercises || 0}</span>
-                          <span className="mini-stat-label">Exercises</span>
-                        </div>
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.total_sets || 0}</span>
-                          <span className="mini-stat-label">Sets</span>
-                        </div>
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.total_reps || 0}</span>
-                          <span className="mini-stat-label">Reps</span>
-                        </div>
-                        <div className="mini-stat">
-                          <span className="mini-stat-value">{workout.duration_minutes || 0}</span>
-                          <span className="mini-stat-label">Min</span>
-                        </div>
-                      </div>
-                      
-                      {workout.total_volume > 0 && (
-                        <div className="volume-bar">
-                          <span>Total Volume: {Math.round(workout.total_volume).toLocaleString()} kg</span>
-                        </div>
-                      )}
-                    </div>
-
-                    <div className="workout-card-actions">
-                      <button className="btn-view" onClick={() => handleViewWorkout(workout)}>
-                        View Details
-                      </button>
-                    </div>
-                  </div>
-                ))
+                <table className="sessions-table">
+                  <thead>
+                    <tr>
+                      <th>Status</th>
+                      <th>Title</th>
+                      <th>Date</th>
+                      <th>Exercises</th>
+                      <th>Sets</th>
+                      <th>Reps</th>
+                      <th>Duration</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {workouts.map((workout) => (
+                      <tr key={workout.id} className={workout.is_completed ? 'completed-row' : 'in-progress-row'}>
+                        <td>
+                          <span className={`status-badge ${workout.is_completed ? 'completed' : 'in-progress'}`}>
+                            {workout.is_completed ? '✓' : '🔄'}
+                          </span>
+                          {workout.mood_emoji && <span className="mood-emoji">{workout.mood_emoji}</span>}
+                        </td>
+                        <td className="session-title-cell">{workout.title}</td>
+                        <td>{workout.formatted_date}</td>
+                        <td>{workout.total_exercises || 0}</td>
+                        <td>{workout.total_sets || 0}</td>
+                        <td>{workout.total_reps || 0}</td>
+                        <td>{workout.duration_minutes || 0} min</td>
+                        <td>
+                          <button className="btn-view-table" onClick={() => handleViewWorkout(workout)}>
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
             </div>
           )}
@@ -638,6 +772,9 @@ export default function Workout() {
                     </div>
 
                     <div className="workout-card-actions">
+                      <button className="btn-view" onClick={() => handleViewTemplate(template)}>
+                        View / Edit
+                      </button>
                       <button className="btn-start" onClick={() => handleStartSession(template.id)}>
                         Start Session
                       </button>
@@ -677,10 +814,6 @@ export default function Workout() {
               <div className="detail-stat">
                 <span className="detail-stat-value">{selectedWorkout.total_reps}</span>
                 <span className="detail-stat-label">Reps</span>
-              </div>
-              <div className="detail-stat">
-                <span className="detail-stat-value">{Math.round(selectedWorkout.total_volume)}</span>
-                <span className="detail-stat-label">Volume (kg)</span>
               </div>
               <div className="detail-stat">
                 <span className="detail-stat-value">{selectedWorkout.duration_minutes || 0}</span>
@@ -1139,6 +1272,196 @@ export default function Workout() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* TEMPLATE DETAIL/EDIT MODAL */}
+      {showTemplateDetailModal && selectedTemplate && (
+        <div className="modal-overlay" onClick={() => setShowTemplateDetailModal(false)}>
+          <div className="modal-content modal-large" onClick={e => e.stopPropagation()}>
+            <div className="detail-modal-header">
+              <div>
+                {!editingTemplate ? (
+                  <>
+                    <h2 className="modal-title">{selectedTemplate.title}</h2>
+                    <p className="modal-subtitle">{selectedTemplate.description || 'No description'}</p>
+                  </>
+                ) : (
+                  <>
+                    <input 
+                      type="text"
+                      className="form-input"
+                      value={templateForm.title}
+                      onChange={(e) => setTemplateForm({...templateForm, title: e.target.value})}
+                      placeholder="Template Title"
+                    />
+                  </>
+                )}
+              </div>
+              <span className="template-badge">📋 Template</span>
+            </div>
+
+            {/* Template Stats */}
+            <div className="detail-stats">
+              <div className="detail-stat">
+                <span className="detail-stat-value">{templateExercises.length}</span>
+                <span className="detail-stat-label">Exercises</span>
+              </div>
+              <div className="detail-stat">
+                <span className="detail-stat-value">{templateExercises.reduce((sum, ex) => sum + (ex.sets || 0), 0)}</span>
+                <span className="detail-stat-label">Total Sets</span>
+              </div>
+            </div>
+
+            {/* Description when editing */}
+            {editingTemplate && (
+              <div className="form-group" style={{marginBottom: '1rem'}}>
+                <label className="form-label">Description</label>
+                <textarea 
+                  className="form-textarea"
+                  rows="2"
+                  placeholder="Template description..."
+                  value={templateForm.description}
+                  onChange={(e) => setTemplateForm({...templateForm, description: e.target.value})}
+                ></textarea>
+              </div>
+            )}
+
+            {/* Exercises Section */}
+            <div className="logs-section">
+              <div className="logs-header">
+                <h3>Exercises</h3>
+              </div>
+
+              {/* Add Exercise Search - Only when editing */}
+              {editingTemplate && (
+                <div className="exercise-search-container" style={{marginBottom: '1rem'}}>
+                  <input 
+                    type="text"
+                    className="form-input"
+                    placeholder="Search exercises to add..."
+                    value={templateExerciseSearch}
+                    onChange={(e) => {
+                      setTemplateExerciseSearch(e.target.value);
+                      setShowTemplateExerciseDropdown(true);
+                    }}
+                    onFocus={() => setShowTemplateExerciseDropdown(true)}
+                  />
+                  
+                  {showTemplateExerciseDropdown && templateExerciseSearch && (
+                    <div className="exercise-dropdown">
+                      {filteredTemplateExercises.length > 0 ? (
+                        filteredTemplateExercises.slice(0, 10).map(ex => (
+                          <div 
+                            key={ex.id} 
+                            className="exercise-dropdown-item"
+                            onClick={() => addExerciseToTemplate(ex)}
+                          >
+                            <span>{ex.name}</span>
+                            <span className="exercise-category">{ex.category}</span>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="exercise-dropdown-item no-results">
+                          <span>No exercises found</span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Exercise List */}
+              {templateExercises.length === 0 ? (
+                <p style={{color: '#64748b', textAlign: 'center', padding: '1rem'}}>
+                  No exercises in this template. {editingTemplate && 'Add some above!'}
+                </p>
+              ) : (
+                <div className="exercise-list">
+                  {templateExercises.map((ex, index) => (
+                    <div key={ex.id} className="exercise-card">
+                      <div className="exercise-card-header">
+                        <div className="exercise-card-info">
+                          <span className="exercise-order">{index + 1}</span>
+                          <span className="exercise-name">{ex.name}</span>
+                          <span 
+                            className="exercise-category-badge" 
+                            style={{backgroundColor: getCategoryColor(ex.category) + '20', color: getCategoryColor(ex.category)}}
+                          >
+                            {ex.category}
+                          </span>
+                        </div>
+                        {editingTemplate && (
+                          <button 
+                            className="btn-delete-small"
+                            onClick={() => removeExerciseFromTemplate(ex.id)}
+                          >
+                            🗑️
+                          </button>
+                        )}
+                      </div>
+                      
+                      <div className="exercise-card-details">
+                        {editingTemplate ? (
+                          <div className="exercise-inputs">
+                            <label>Sets:</label>
+                            <input
+                              type="number"
+                              className="input-small"
+                              value={ex.sets}
+                              onChange={(e) => updateTemplateExercise(ex.id, 'sets', parseInt(e.target.value) || 0)}
+                              min="1"
+                            />
+                            <label>Reps:</label>
+                            <input
+                              type="number"
+                              className="input-small"
+                              value={ex.reps}
+                              onChange={(e) => updateTemplateExercise(ex.id, 'reps', parseInt(e.target.value) || 0)}
+                              min="0"
+                            />
+                          </div>
+                        ) : (
+                          <div className="exercise-summary">
+                            <span>{ex.sets} sets × {ex.reps} reps</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Modal Actions */}
+            <div className="modal-actions">
+              {!editingTemplate ? (
+                <>
+                  <button className="btn-delete" onClick={handleDeleteTemplate}>
+                    Delete
+                  </button>
+                  <button className="btn-edit" onClick={startEditTemplate}>
+                    Edit
+                  </button>
+                  <button className="btn-start" onClick={() => {
+                    handleStartSession(selectedTemplate.id);
+                    setShowTemplateDetailModal(false);
+                  }}>
+                    Start Session
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn-cancel" onClick={cancelEditTemplate}>
+                    Cancel
+                  </button>
+                  <button className="btn-save" onClick={saveTemplate}>
+                    Save Changes
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       )}

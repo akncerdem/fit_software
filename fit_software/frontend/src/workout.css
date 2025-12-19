@@ -136,7 +136,135 @@
   background-color: #1d4ed8;
 }
 
-/* YENİ GRID VE KART YAPISI */
+/* ========== SESSIONS TABLE STYLES ========== */
+.sessions-table-container {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.sessions-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.sessions-table thead {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+
+.sessions-table th {
+  padding: 1rem 0.75rem;
+  text-align: left;
+  font-weight: 600;
+  color: white;
+  white-space: nowrap;
+}
+
+.sessions-table th:first-child {
+  padding-left: 1.25rem;
+}
+
+.sessions-table th:last-child {
+  padding-right: 1.25rem;
+  text-align: center;
+}
+
+.sessions-table tbody tr {
+  border-bottom: 1px solid #e2e8f0;
+  transition: background-color 0.2s;
+}
+
+.sessions-table tbody tr:hover {
+  background-color: #f8fafc;
+}
+
+.sessions-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.sessions-table td {
+  padding: 1rem 0.75rem;
+  color: #475569;
+  vertical-align: middle;
+}
+
+.sessions-table td:first-child {
+  padding-left: 1.25rem;
+}
+
+.sessions-table td:last-child {
+  padding-right: 1.25rem;
+  text-align: center;
+}
+
+.session-title-cell {
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.completed-row {
+  background-color: #f0fdf4;
+}
+
+.in-progress-row {
+  background-color: #fffbeb;
+}
+
+.sessions-table .status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.sessions-table .status-badge.completed {
+  background-color: #dcfce7;
+  color: #166534;
+}
+
+.sessions-table .status-badge.in-progress {
+  background-color: #fef3c7;
+  color: #92400e;
+}
+
+.sessions-table .mood-emoji {
+  margin-left: 0.5rem;
+  font-size: 1rem;
+}
+
+.btn-view-table {
+  padding: 0.5rem 1rem;
+  background-color: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 500;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.btn-view-table:hover {
+  background-color: #1d4ed8;
+}
+
+/* Responsive table */
+@media (max-width: 1024px) {
+  .sessions-table-container {
+    overflow-x: auto;
+  }
+  
+  .sessions-table {
+    min-width: 800px;
+  }
+}
+
+/* ========== GRID VE KART YAPISI (Templates) ========== */
 .workouts-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1129,4 +1257,101 @@
 
 .btn-edit:hover {
   background: #bfdbfe;
+}
+
+/* ========== TEMPLATE MODAL STYLES ========== */
+.template-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.5rem 1rem;
+  background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  color: white;
+  border-radius: 20px;
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.exercise-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.exercise-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 1rem;
+  transition: all 0.2s;
+}
+
+.exercise-card:hover {
+  border-color: #cbd5e1;
+}
+
+.exercise-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.exercise-card-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.exercise-card-details {
+  padding-top: 0.5rem;
+  border-top: 1px solid #e2e8f0;
+}
+
+.exercise-summary {
+  color: #64748b;
+  font-size: 0.9rem;
+}
+
+.exercise-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.exercise-inputs label {
+  color: #64748b;
+  font-size: 0.85rem;
+}
+
+.btn-delete {
+  padding: 0.75rem 1.5rem;
+  background: #fee2e2;
+  color: #dc2626;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.btn-delete:hover {
+  background: #fecaca;
+}
+
+/* Responsive Modal */
+@media (max-width: 768px) {
+  .modal-large {
+    width: 95%;
+    max-height: 90vh;
+  }
+  
+  .exercise-card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+  
+  .exercise-inputs {
+    width: 100%;
+  }
 }
