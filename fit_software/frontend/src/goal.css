@@ -751,6 +751,30 @@
   transition: all 0.2s;
 }
 
+
+/* Gün durumuna göre arka plan (Activity Log) */
+.day-column.day-success {
+  background-color: #ecfdf5; /* açık yeşil */
+  border: 1px solid #a7f3d0;
+}
+.day-column.day-pending {
+  background-color: #fffbeb; /* açık turuncu */
+  border: 1px solid #fde68a;
+}
+.day-column.day-missed {
+  background-color: #fef2f2; /* açık kırmızı */
+  border: 1px solid #fecaca;
+}
+.day-column.day-future {
+  opacity: 0.7;
+}
+
+/* Eğer bugün aynı zamanda başarılıysa yeşil göster */
+.day-column.today.day-success {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
 /* Bugünün sütununu vurgula */
 .day-column.today {
   background-color: #eff6ff; /* Açık mavi */

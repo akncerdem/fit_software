@@ -1,5 +1,5 @@
 import { useNavigate, Link } from "react-router-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { goalsApi } from "./goalApi";
 import "./goal.css";
 
@@ -61,7 +61,19 @@ export default function Goal() {
   const [weekOffset, setWeekOffset] = useState(0);
 
   // Modallar
-  const [isModalOpen, setIsModalOpen] = useState(false);
+    // Modal dışına tıklayınca kapatma: sadece tıklama dışarıda başlar ve dışarıda biterse kapansın
+  const overlayDownOnBackdropRef = useRef(false);
+  const handleOverlayPointerDown = (e) => {
+    overlayDownOnBackdropRef.current = e.target === e.currentTarget;
+  };
+  const handleOverlayClick = (closeFn) => (e) => {
+    const startedOutside = overlayDownOnBackdropRef.current;
+    overlayDownOnBackdropRef.current = false;
+    const endedOutside = e.target === e.currentTarget;
+    if (startedOutside && endedOutside) closeFn();
+  };
+
+const [isModalOpen, setIsModalOpen] = useState(false);
   const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯', current_value: 0, target_value: '', unit: 'workouts' });
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null); 
@@ -121,6 +133,59 @@ export default function Goal() {
     return `${startStr} - ${endStr}`;
   };
 
+  const formatDateKey = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+
+  // --- LOG TARİHİNİ GÜVENLİ ŞEKİLDE YYYY-AA-GG FORMATINA ÇEVİR ---
+  const normalizeLogDateKey = (log) => {
+    const raw =
+      log?.date ??
+      log?.day ??
+      log?.created_at ??
+      log?.updated_at ??
+      log?.timestamp ??
+      log?.time ??
+      log?.datetime;
+
+    if (!raw) return null;
+
+    if (typeof raw === "string") {
+      // "YYYY-MM-DD" veya "YYYY-MM-DDTHH:mm:ssZ"
+      const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return `${m[1]}-${m[2]}-${m[3]}`;
+
+      // "DD.MM.YYYY"
+      const m2 = raw.match(/^(\d{2})\.(\d{2})\.(\d{4})/);
+      if (m2) return `${m2[3]}-${m2[2]}-${m2[1]}`;
+
+      // Diğer formatlar için (örn. ISO datetime): local tarihe çevir
+      const d = new Date(raw);
+      if (!isNaN(d.getTime())) return formatDateKey(d);
+      return null;
+    }
+
+    const d = new Date(raw);
+    if (!isNaN(d.getTime())) return formatDateKey(d);
+    return null;
+  };
+
+  // Activity log günlerini hızlı eşleştirmek için Set'e çevir
+  const activityDateSet = useMemo(() => {
+    const set = new Set();
+    if (Array.isArray(activityLogs)) {
+      activityLogs.forEach((log) => {
+        const key = normalizeLogDateKey(log);
+        if (key) set.add(key);
+      });
+    }
+    return set;
+  }, [activityLogs]);
+
   // --- HAFTALIK GRAFİK VERİSİ ---
   const getWeeklyData = () => {
     const today = new Date();
@@ -133,11 +198,11 @@ export default function Goal() {
     for (let i = 0; i < 7; i++) {
       const loopDate = new Date(currentWeekStart);
       loopDate.setDate(currentWeekStart.getDate() + i);
-      const dateString = loopDate.toISOString().split('T')[0];
+      const dateString = formatDateKey(loopDate);
       const dayName = loopDate.toLocaleDateString('en-US', { weekday: 'short' });
       
-      const hasLog = Array.isArray(activityLogs) && activityLogs.some(log => log.date === dateString);
-      const isToday = dateString === new Date().toISOString().split('T')[0];
+      const hasLog = activityDateSet.has(dateString);
+      const isToday = dateString === formatDateKey(new Date());
       const isFuture = new Date(dateString) > new Date();
 
       let status = 'future';
@@ -286,7 +351,7 @@ export default function Goal() {
 
               <div className="week-grid">
                 {weeklyData.map((day, index) => (
-                  <div key={index} className={`day-column ${day.isToday ? 'today' : ''}`}>
+                  <div key={index} className={`day-column day-${day.status} ${day.isToday ? 'today' : ''}`}>
                     <span className="day-name">{day.name}</span>
                     <span className={`day-status-icon status-${day.status}`}>{day.icon}</span>
                     <span style={{fontSize:'10px', color:'#9ca3af'}}>{day.date.split('-')[2]}</span>
@@ -327,9 +392,9 @@ export default function Goal() {
 
       {/* MODALLAR (AYNI) */}
       {isModalOpen && (
-        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+        <div className="modal-overlay" onPointerDown={handleOverlayPointerDown} onClick={handleOverlayClick(() => setIsModalOpen(false))}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">Create New Goal</h2><button className="modal-close" onClick={() => setIsModalOpen(false)}>✕</button></div>
+            <div className="modal-header"><h2 className="modal-title">Create New Goal</h2><button className="modal-close" onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}>✕</button></div>
             <form onSubmit={handleCreateGoal} className="goal-form">
               <div className="form-group"><label className="form-label">Title</label><input type="text" className="form-input" value={newGoal.title} onChange={(e) => setNewGoal({...newGoal, title: e.target.value})} required /></div>
               <div className="form-group"><label className="form-label">Desc</label><textarea className="form-textarea" value={newGoal.description} onChange={(e) => setNewGoal({...newGoal, description: e.target.value})} rows="2" /></div>
@@ -338,42 +403,42 @@ export default function Goal() {
                  <div className="form-group"><label className="form-label">Unit</label><select className="form-select" value={newGoal.unit} onChange={(e) => setNewGoal({...newGoal, unit: e.target.value})}>{(GOAL_TYPES[newGoal.icon]?.units||[]).map(u=><option key={u} value={u}>{UNIT_LABELS[u]||u}</option>)}</select></div>
               </div>
               <div className="form-row">
-                <div className="form-group"><label className="form-label">Current</label><input type="number" step="0.1" className="form-input" value={newGoal.current_value} onChange={(e) => setNewGoal({...newGoal, current_value: parseFloat(e.target.value)||0})} /></div>
-                <div className="form-group"><label className="form-label">Target</label><input type="number" step="0.1" className="form-input" value={newGoal.target_value} onChange={(e) => setNewGoal({...newGoal, target_value: parseFloat(e.target.value)||''})} required /></div>
+                <div className="form-group"><label className="form-label">Current</label><input type="number" step="1" className="form-input" value={newGoal.current_value} onChange={(e) => setNewGoal({...newGoal, current_value: parseFloat(e.target.value)||0})} /></div>
+                <div className="form-group"><label className="form-label">Target</label><input type="number" step="1" className="form-input" value={newGoal.target_value} onChange={(e) => setNewGoal({...newGoal, target_value: parseFloat(e.target.value)||''})} required /></div>
               </div>
-              <div className="modal-footer"><button type="button" className="btn-cancel" onClick={() => setIsModalOpen(false)}>Cancel</button><button type="submit" className="btn-submit">Create</button></div>
+              <div className="modal-footer"><button type="button" className="btn-cancel" onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}>Cancel</button><button type="submit" className="btn-submit">Create</button></div>
             </form>
           </div>
         </div>
       )}
 
       {isUpdateModalOpen && selectedGoal && (
-        <div className="modal-overlay" onClick={() => setIsUpdateModalOpen(false)}>
+        <div className="modal-overlay" onPointerDown={handleOverlayPointerDown} onClick={handleOverlayClick(() => setIsUpdateModalOpen(false))}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header"><h2 className="modal-title">Update Progress</h2><button className="modal-close" onClick={() => setIsUpdateModalOpen(false)}>✕</button></div>
+            <div className="modal-header"><h2 className="modal-title">Update Progress</h2><button className="modal-close" onClick={(e) => { e.stopPropagation(); setIsUpdateModalOpen(false); }}>✕</button></div>
             <form onSubmit={handleConfirmUpdate} className="goal-form">
                <div className="form-group"><p>Updating: <strong>{selectedGoal.title}</strong></p></div>
-               <div className="form-group"><label className="form-label">New Value ({selectedGoal.unit})</label><input type="number" step="0.1" autoFocus className="form-input" value={updateValue} onChange={(e) => setUpdateValue(e.target.value)} required /></div>
-               <div className="modal-footer"><button type="button" className="btn-cancel" onClick={() => setIsUpdateModalOpen(false)}>Cancel</button><button type="submit" className="btn-submit">Save</button></div>
+               <div className="form-group"><label className="form-label">New Value ({selectedGoal.unit})</label><input type="number" step="1" autoFocus className="form-input" value={updateValue} onChange={(e) => setUpdateValue(e.target.value)} required /></div>
+               <div className="modal-footer"><button type="button" className="btn-cancel" onClick={(e) => { e.stopPropagation(); setIsUpdateModalOpen(false); }}>Cancel</button><button type="submit" className="btn-submit">Save</button></div>
             </form>
           </div>
         </div>
       )}
       
       {isDeleteModalOpen && selectedGoal && (
-        <div className="modal-overlay" onClick={() => setIsDeleteModalOpen(false)}>
+        <div className="modal-overlay" onPointerDown={handleOverlayPointerDown} onClick={handleOverlayClick(() => setIsDeleteModalOpen(false))}>
            <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-             <div className="modal-header"><h2 className="modal-title">Delete Goal</h2><button className="modal-close" onClick={() => setIsDeleteModalOpen(false)}>✕</button></div>
+             <div className="modal-header"><h2 className="modal-title">Delete Goal</h2><button className="modal-close" onClick={(e) => { e.stopPropagation(); setIsDeleteModalOpen(false); }}>✕</button></div>
              <p>Are you sure you want to delete <strong>"{selectedGoal.title}"</strong>?</p>
-             <div className="modal-footer"><button className="btn-cancel" onClick={() => setIsDeleteModalOpen(false)}>Cancel</button><button className="btn-delete" onClick={handleConfirmDelete}>Delete</button></div>
+             <div className="modal-footer"><button className="btn-cancel" onClick={(e) => { e.stopPropagation(); setIsDeleteModalOpen(false); }}>Cancel</button><button className="btn-delete" onClick={handleConfirmDelete}>Delete</button></div>
            </div>
         </div>
       )}
 
       {isViewModalOpen && viewGoal && (
-        <div className="modal-overlay" onClick={() => setIsViewModalOpen(false)}>
+        <div className="modal-overlay" onPointerDown={handleOverlayPointerDown} onClick={handleOverlayClick(() => setIsViewModalOpen(false))}>
           <div className="modal-content" onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header"><div style={{display:'flex', gap:'10px'}}><span>{viewGoal.icon}</span><h2 className="modal-title">{viewGoal.title}</h2></div><button className="modal-close" onClick={() => setIsViewModalOpen(false)}>✕</button></div>
+            <div className="modal-header"><div style={{display:'flex', gap:'10px'}}><span>{viewGoal.icon}</span><h2 className="modal-title">{viewGoal.title}</h2></div><button className="modal-close" onClick={(e) => { e.stopPropagation(); setIsViewModalOpen(false); }}>✕</button></div>
             <div className="goal-form">
               {viewGoal.description && <div className="form-group" style={{background:'#f9fafb', padding:'10px', borderRadius:'8px'}}><p>{viewGoal.description}</p></div>}
               <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'15px', marginTop:'10px'}}>
@@ -391,7 +456,7 @@ export default function Goal() {
                  <span>Updated: {formatDate(viewGoal.updated_at)}</span>
               </div>
             </div>
-            <div className="modal-footer"><button className="btn-cancel" onClick={() => setIsViewModalOpen(false)}>Close</button></div>
+            <div className="modal-footer"><button className="btn-cancel" onClick={(e) => { e.stopPropagation(); setIsViewModalOpen(false); }}>Close</button></div>
           </div>
         </div>
       )}
