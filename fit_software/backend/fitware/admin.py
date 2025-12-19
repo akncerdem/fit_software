@@ -29,7 +29,7 @@ class GoalAdmin(admin.ModelAdmin):
         "unit",
         "is_completed",
         "is_active",
-        "due_date",
+        #"due_date",
         "created_at",
     )
     search_fields = ("title", "user__username", "user__email")
