@@ -502,7 +502,323 @@
 }
 
 
+/* --- DASHBOARD OVERVIEW --- */
+.dashboard-overview {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 40px; /* Alttaki listeyle mesafe */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  border: 1px solid #e5e7eb;
+}
 
+.dashboard-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 24px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* 3'lü İstatistik Kartları */
+.stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+  margin-bottom: 32px;
+}
+
+.stat-card {
+  background-color: #f9fafb;
+  padding: 16px;
+  border-radius: 12px;
+  text-align: center;
+  border: 1px solid #f3f4f6;
+  transition: transform 0.2s;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  border-color: #e5e7eb;
+}
+
+.stat-icon {
+  font-size: 24px;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: #111827;
+  display: block;
+  line-height: 1.2;
+}
+
+.stat-label {
+  font-size: 13px;
+  font-weight: 500;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Ortalama İlerleme Çubuğu */
+.overall-progress-container {
+  background-color: #f3f4f6;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.overall-header {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+  font-weight: 600;
+  color: #374151;
+  font-size: 14px;
+}
+
+.overall-bar-bg {
+  width: 100%;
+  height: 12px;
+  background-color: #e5e7eb;
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.overall-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+  border-radius: 99px;
+  transition: width 1s ease-in-out;
+}
+
+.milestone-text {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+
+
+
+
+/* --- YENİ EKLENEN MODERN STİLLER --- */
+
+/* 1. Milestone Badges (Rozetler) */
+.badge {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.badge-starter { background-color: #f3f4f6; color: #6b7280; border: 1px solid #e5e7eb; }
+.badge-bronze { background: linear-gradient(135deg, #fde68a 0%, #d97706 100%); color: #78350f; border: none; }
+.badge-silver { background: linear-gradient(135deg, #e5e7eb 0%, #9ca3af 100%); color: #374151; border: none; }
+.badge-gold { background: linear-gradient(135deg, #fcd34d 0%, #b45309 100%); color: #78350f; border: none; box-shadow: 0 4px 6px rgba(251, 191, 36, 0.4); }
+.badge-completed { background: linear-gradient(135deg, #86efac 0%, #15803d 100%); color: white; border: none; }
+
+/* 2. Animated Progress Bar (Şeritli ve Hareketli) */
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.goal-progress-fill {
+  /* Mevcut mavi rengi daha canlı ve efektli yapıyoruz */
+  background: linear-gradient(
+    45deg, 
+    #2563eb 25%, 
+    #3b82f6 50%, 
+    #2563eb 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 3s infinite linear; /* Sürekli akan animasyon */
+  box-shadow: 0 0 10px rgba(37, 99, 235, 0.3);
+}
+
+/* 3. Circular Progress Ring (Dashboard İçin) */
+.circular-chart {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  max-height: 250px;
+}
+
+.circle-bg {
+  fill: none;
+  stroke: #eee;
+  stroke-width: 3.8;
+}
+
+.circle {
+  fill: none;
+  stroke-width: 2.8;
+  stroke-linecap: round;
+  animation: progress 1s ease-out forwards;
+}
+
+@keyframes progress {
+  0% { stroke-dasharray: 0 100; }
+}
+
+.percentage-text {
+  fill: #111827;
+  font-family: sans-serif;
+  font-weight: 800; /* Daha kalın font */
+  font-size: 36px;  /* 0.5em yerine 36px yaptık, okunaklı olsun */
+  text-anchor: middle;
+}
+
+.label-text {
+  fill: #6b7280;
+  font-family: sans-serif;
+  font-size: 14px;  /* 0.2em yerine 14px yaptık */
+  font-weight: 600;
+  text-anchor: middle;
+  text-transform: uppercase; /* Harfleri büyük yapsın */
+  letter-spacing: 1px;
+}
+
+/* Dashboard Düzeni Güncellemesi */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.5fr 1fr; /* Sol taraf kartlar, sağ taraf yuvarlak */
+  gap: 24px;
+  align-items: center;
+}
+
+@media (max-width: 768px) {
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+
+
+/* --- WEEKLY ACTIVITY CHART --- */
+.weekly-activity-section {
+  margin-top: 32px;
+  padding-top: 24px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.weekly-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.weekly-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #374151;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr); /* 7 Gün için eşit sütun */
+  gap: 12px;
+}
+
+.day-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  background-color: #f9fafb;
+  border-radius: 12px;
+  transition: all 0.2s;
+}
+
+
+/* Gün durumuna göre arka plan (Activity Log) */
+.day-column.day-success {
+  background-color: #ecfdf5; /* açık yeşil */
+  border: 1px solid #a7f3d0;
+}
+.day-column.day-pending {
+  background-color: #fffbeb; /* açık turuncu */
+  border: 1px solid #fde68a;
+}
+.day-column.day-missed {
+  background-color: #fef2f2; /* açık kırmızı */
+  border: 1px solid #fecaca;
+}
+.day-column.day-future {
+  opacity: 0.7;
+}
+
+/* Eğer bugün aynı zamanda başarılıysa yeşil göster */
+.day-column.today.day-success {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+}
+
+/* Bugünün sütununu vurgula */
+.day-column.today {
+  background-color: #eff6ff; /* Açık mavi */
+  border: 1px solid #bfdbfe;
+}
+
+.day-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+}
+
+.day-status-icon {
+  font-size: 24px;
+  line-height: 1;
+}
+
+/* İkon renkleri */
+.status-success { color: #10b981; } /* Yeşil Tik */
+.status-missed { color: #ef4444; opacity: 0.5; } /* Kırmızı Çarpı */
+.status-pending { color: #f59e0b; } /* Turuncu Bekleyen (Bugün) */
+.status-future { color: #e5e7eb; } /* Gri Gelecek */
+
+/* Mobilde kaydırma özelliği */
+@media (max-width: 600px) {
+  .week-grid {
+    overflow-x: auto;
+    padding-bottom: 10px;
+  }
+  .day-column {
+    min-width: 50px;
+  }
+}
+
+
+
+
+/* Mobilde kartlar alt alta olsun */
+@media (max-width: 768px) {
+  .stats-row {
+    grid-template-columns: 1fr;
+  }
+}
 
 
 

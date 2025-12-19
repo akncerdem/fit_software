@@ -3,21 +3,30 @@ from django.contrib.auth.models import User
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.permissions import AllowAny
+from django.utils import timezone
+import datetime
 
 # =============================================================================
 # MODELS
 # =============================================================================
 
+class ActivityLog(models.Model):
+    """Kullanıcının hangi gün işlem yaptığını tutan tablo"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
+    action_type = models.CharField(max_length=50) # 'create', 'update'
+    date = models.DateField(default=timezone.now)
+
+    class Meta:
+        ordering = ['-date']
+
 class Goal(models.Model):
-    """Kullanıcı hedefleri modeli"""
-    
     UNIT_CHOICES = [
-        ('kg', 'Kilogram'),
-        ('workouts', 'Workouts'),
-        ('km', 'Kilometer'),
-        ('reps', 'Repetitions'),
-        ('minutes', 'Minutes'),
+        ('kg', 'kg'), ('lbs', 'lbs'), ('fav', 'Body Fat %'),
+        ('km', 'Kilometers'), ('m', 'Meters'), ('miles', 'Miles'), ('laps', 'Laps'),
+        ('min', 'Minutes'), ('hr', 'Hours'),
+        ('workouts', 'Workouts'), ('sets', 'Sets'), ('reps', 'Reps'),
+        ('cal', 'Calories')
     ]
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='goals')
@@ -25,117 +34,90 @@ class Goal(models.Model):
     description = models.TextField(blank=True)
     icon = models.CharField(max_length=10, default='🎯')
     
+    # Progress hesabı için gerekli alanlar
     start_value = models.FloatField(default=0)
     current_value = models.FloatField(default=0)
     target_value = models.FloatField()
     unit = models.CharField(max_length=20, choices=UNIT_CHOICES, default='workouts')
     
-    # for ADMIN.PY 
     is_completed = models.BooleanField(default=False)
-    due_date = models.DateField(null=True, blank=True)
-    
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
     class Meta:
         ordering = ['-created_at']
-        
-    def __str__(self):
-        return f"{self.user.username} - {self.title}"
-    
+
     def save(self, *args, **kwargs):
-        # Otomatik tamamlandı (is_completed) kontrolü
-        # Eğer current_value hedefi geçtiyse is_completed True olsun
-        try:
-            if self.start_value > self.target_value: # Kilo verme vb.
-                if self.current_value <= self.target_value:
-                    self.is_completed = True
-            else: # Kilo alma, koşu vb.
-                if self.current_value >= self.target_value:
-                    self.is_completed = True
-        except:
-            pass
+        # Yeni kayıtsa ve start_value 0 ise, başlangıç değerini current yap
+        if not self.pk and self.start_value == 0:
+            self.start_value = self.current_value
         super().save(*args, **kwargs)
-    
+        
     @property
     def progress(self):
-        """İlerleme yüzdesini hesapla"""
-        if self.target_value == 0:
-            return 0
-        if self.icon == '📉':
-            return min(round((self.target_value/self.current_value ) * 100, 1), 100)
-        else:
-            return min(round((self.current_value / self.target_value) * 100, 1), 100)
+        """Hata korumalı progress hesabı"""
+        try:
+            # Sıfıra bölme veya anlamsız değer kontrolü
+            if self.start_value == self.target_value:
+                return 100.0 if self.current_value == self.target_value else 0.0
+            
+            # Durum 1: Azaltma (Kilo verme vb.)
+            if self.start_value > self.target_value:
+                if self.current_value <= self.target_value: return 100.0
+                if self.current_value >= self.start_value: return 0.0
+                total_diff = self.start_value - self.target_value
+                current_diff = self.start_value - self.current_value
+                return round((current_diff / total_diff) * 100, 1)
+            
+            # Durum 2: Artırma (Koşu, Ağırlık vb.)
+            else:
+                if self.current_value >= self.target_value: return 100.0
+                if self.current_value <= self.start_value: return 0.0
+                total_diff = self.target_value - self.start_value
+                current_diff = self.current_value - self.start_value
+                return round((current_diff / total_diff) * 100, 1)
+        except Exception:
+            # Herhangi bir matematik hatasında sistemi çökertme, 0 döndür
+            return 0.0
     
     @property
     def remaining(self):
-        """
-        Hedefe kalan miktarı hedefin yönüne göre hesapla.
-        """
-        try:
-            # Durum 1: Kilo Verme / Azaltma (Start > Target)
-            # Örn: Start: 80, Target: 75, Current: 78
-            if self.start_value > self.target_value:
-                # Eğer hedefin altına inildiyse kalan 0'dır
-                if self.current_value <= self.target_value:
-                    return 0
-                # Kalan = Güncel - Hedef (78 - 75 = 3 kg kaldı)
-                return round(self.current_value - self.target_value, 1)
-
-            # Durum 2: Kilo Alma / Artırma (Target > Start)
-            # Örn: Start: 50, Target: 60, Current: 55
-            else:
-                # Hedef geçildiyse kalan 0'dır
-                if self.current_value >= self.target_value:
-                    return 0
-                # Kalan = Hedef - Güncel (60 - 55 = 5 kg kaldı)
-                return round(self.target_value - self.current_value, 1)
-                
-        except Exception:
-            return 0
-
+        return round(abs(self.target_value - self.current_value), 1)
 
 # =============================================================================
 # SERIALIZERS
 # =============================================================================
 
+class ActivityLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ActivityLog
+        fields = ['id', 'action_type', 'date']
+
 class GoalSerializer(serializers.ModelSerializer):
-    """Goal serializer"""
-    
     progress = serializers.ReadOnlyField()
     remaining = serializers.ReadOnlyField()
     username = serializers.CharField(source='user.username', read_only=True)
     
     class Meta:
         model = Goal
-        fields = [
-            'id', 'user', 'username', 'title', 'description', 'icon',
-            'start_value', 'current_value', 'target_value', 'unit', 'progress', 'remaining',
-            'is_active', 'created_at', 'updated_at'
-        ]
-        read_only_fields = ['user', 'created_at', 'updated_at']
+        fields = '__all__'
+        read_only_fields = ['user', 'created_at', 'updated_at', 'progress', 'remaining']
     
     def create(self, validated_data):
-        """Yeni goal oluştururken user'ı otomatik ekle"""
-        # Eğer request context'te varsa user'ı al
         request = self.context.get('request')
         if request and hasattr(request, 'user') and request.user.is_authenticated:
             validated_data['user'] = request.user
         else:
-            # Test için ilk user'ı kullan
             validated_data['user'] = User.objects.first()
-            
-        # start_value'yu current_value ile başlat (eğer verilmediyse)
-        if 'start_value' not in validated_data:
-            validated_data['start_value'] = validated_data.get('current_value', 0)
+        
+        # start_value kontrolü
+        if 'start_value' not in validated_data and 'current_value' in validated_data:
+            validated_data['start_value'] = validated_data['current_value']
             
         return super().create(validated_data)
 
-
 class GoalUpdateProgressSerializer(serializers.Serializer):
-    """Goal progress güncelleme serializer"""
-    
     current_value = serializers.FloatField(min_value=0)
     
     def update(self, instance, validated_data):
@@ -143,100 +125,58 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
         instance.save()
         return instance
 
-
 # =============================================================================
 # VIEWS
 # =============================================================================
 
 class GoalViewSet(viewsets.ModelViewSet):
-    """
-    Goal ViewSet - CRUD işlemleri
-    
-    Endpoints:
-    - GET /api/goals/ - Tüm goals listesi
-    - POST /api/goals/ - Yeni goal oluştur
-    - GET /api/goals/{id}/ - Tek goal detayı
-    - PUT /api/goals/{id}/ - Goal güncelle
-    - PATCH /api/goals/{id}/ - Goal kısmi güncelle
-    - DELETE /api/goals/{id}/ - Goal sil
-    - POST /api/goals/{id}/update_progress/ - Progress güncelle
-    """
-    
     serializer_class = GoalSerializer
-    # TEST İÇİN - Production'da IsAuthenticated olmalı
     permission_classes = [AllowAny]
     
     def get_queryset(self):
-        """Sadece kullanıcının kendi goal'larını getir"""
-        # TEST İÇİN - Kullanıcı kontrolü kaldırıldı
         if self.request.user.is_authenticated:
             return Goal.objects.filter(user=self.request.user)
-        # Giriş yapmamış kullanıcı için tüm goal'ları göster (TEST İÇİN)
         return Goal.objects.all()
     
+    # Log kaydetme yardımcısı
+    def _log_activity(self, action_type):
+        try:
+            user = self.request.user if self.request.user.is_authenticated else User.objects.first()
+            today = timezone.now().date()
+            if not ActivityLog.objects.filter(user=user, date=today).exists():
+                ActivityLog.objects.create(user=user, action_type=action_type, date=today)
+        except Exception as e:
+            print(f"Log Error: {e}") # Log hatası olsa bile sistemi durdurma
+
     def perform_create(self, serializer):
-        """Yeni goal oluştururken user'ı otomatik ekle"""
-        # TEST İÇİN - Kullanıcı kontrolü esnetildi
         if self.request.user.is_authenticated:
             serializer.save(user=self.request.user)
         else:
-            # Test için ilk user'ı kullan
-            first_user = User.objects.first()
-            if first_user:
-                serializer.save(user=first_user)
-            else:
-                # Hiç user yoksa hata ver
-                raise serializers.ValidationError("No users exist in database")
+            serializer.save(user=User.objects.first())
+        self._log_activity('create_goal')
     
     @action(detail=True, methods=['post'], url_path='update-progress')
     def update_progress(self, request, pk=None):
-        """
-        Goal progress güncelle
-        
-        POST /api/goals/{id}/update-progress/
-        Body: { "current_value": 5.5 }
-        """
         goal = self.get_object()
         serializer = GoalUpdateProgressSerializer(data=request.data)
-        
         if serializer.is_valid():
             serializer.update(goal, serializer.validated_data)
-            return Response({
-                'success': True,
-                'message': 'Progress updated successfully',
-                'goal': GoalSerializer(goal).data
-            })
-        
+            self._log_activity('update_progress')
+            return Response({'success': True, 'goal': GoalSerializer(goal).data})
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['get'])
     def active(self, request):
-        """
-        Sadece aktif goal'ları getir
-        
-        GET /api/goals/active/
-        """
         active_goals = self.get_queryset().filter(is_active=True)
-        serializer = self.get_serializer(active_goals, many=True)
-        return Response(serializer.data)
-    
+        return Response(self.get_serializer(active_goals, many=True).data)
+
     @action(detail=False, methods=['get'])
-    def stats(self, request):
-        """
-        Goal istatistikleri
-        
-        GET /api/goals/stats/
-        """
-        queryset = self.get_queryset()
-        total_goals = queryset.count()
-        active_goals = queryset.filter(is_active=True).count()
-        completed_goals = queryset.filter(
-            current_value__gte=models.F('target_value')
-        ).count()
-        
-        return Response({
-            'total_goals': total_goals,
-            'active_goals': active_goals,
-            'completed_goals': completed_goals,
-            'completion_rate': round((completed_goals / total_goals * 100) if total_goals > 0 else 0, 1)
-        })
+    def activity_logs(self, request):
+        """Son 30 günün aktivite loglarını getir"""
+        try:
+            user = request.user if request.user.is_authenticated else User.objects.first()
+            start_date = timezone.now().date() - datetime.timedelta(days=35)
+            logs = ActivityLog.objects.filter(user=user, date__gte=start_date)
+            return Response(ActivityLogSerializer(logs, many=True).data)
+        except Exception:
+            return Response([]) # Hata olursa boş liste dön
