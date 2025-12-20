@@ -867,3 +867,97 @@
     gap: 12px;
   }
 }
+
+
+
+
+
+.ai-box { margin-top: 10px; }
+
+.ai-btn {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-card {
+  margin-top: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 12px;
+  background: #f9fafb;
+}
+
+.ai-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.ai-title { font-weight: 700; }
+
+.ai-toggle {
+  border: 1px solid #e5e7eb;
+  background: white;
+  border-radius: 10px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.ai-msg { margin: 10px 0; color: #374151; }
+
+.ai-alt {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+  background: white;
+  margin-bottom: 10px;
+}
+
+.ai-apply {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  background: white;
+  cursor: pointer;
+  font-weight: 600;
+}
+ .ai-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed; /* yasak imleç */
+}
+
+/* bazı tarayıcılarda daha net görünmesi için */
+.ai-btn:disabled:hover {
+  opacity: 0.45;
+}
+
+
+/* Default (zaten varsa dokunma, yoksa bu güzel durur) */
+.ai-btn {
+  transition: transform 0.12s ease, box-shadow 0.12s ease, border-color 0.12s ease;
+}
+
+/* Hover sadece aktifken */
+.ai-btn:not(:disabled):hover {
+  border-color: #d1d5db;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+  transform: translateY(-1px);
+}
+
+/* Tıklarken küçük “press” hissi */
+.ai-btn:not(:disabled):active {
+  transform: translateY(0px);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+}
+
+/* Disabled görünüm (bunu eklediysen aynı kalsın) */
+.ai-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}

@@ -112,6 +112,9 @@ export const goalsApi = {
 
   getActive: async () => (await api.get('/goals/active/')).data,
   getLogs: async () => (await api.get('/goals/activity_logs/')).data,
+  suggest: async (title, description) =>
+    (await api.post('/goals/suggest/', { title, description })).data,
+
   getStats: async () => (await api.get('/goals/stats/')).data,
 };
 
