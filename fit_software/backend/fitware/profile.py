@@ -4,6 +4,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.contrib.auth.models import User
 from .models import Profile
+from .goals import Goal
 
 # =============================================================================
 # SERIALIZERS
@@ -41,6 +42,22 @@ class ProfileViewSet(viewsets.ModelViewSet):
         """Only return the current user's profile"""
         return Profile.objects.filter(user=self.request.user)
     
+    def create(self, request, *args, **kwargs):
+        """Create profile for current user"""
+        # Check if user already has a profile
+        if Profile.objects.filter(user=request.user).exists():
+            return Response(
+                {"detail": "Profile already exists for this user."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Create profile with current user
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.save(user=request.user)
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+    
     def list(self, request, *args, **kwargs):
         """Override list to return single profile or create one"""
         profile = Profile.objects.filter(user=request.user).first()
@@ -51,12 +68,31 @@ class ProfileViewSet(viewsets.ModelViewSet):
             # Return empty response if no profile exists
             return Response(None, status=status.HTTP_404_NOT_FOUND)
     
-    def perform_create(self, serializer):
-        """Create profile and assign to current user"""
-        # Check if profile already exists
-        if Profile.objects.filter(user=self.request.user).exists():
-            raise serializers.ValidationError("Profile already exists for this user. Use PUT/PATCH to update.")
-        serializer.save(user=self.request.user)
+    def perform_update(self, serializer):
+        """Update profile and sync weight to related goals"""
+        old_weight = serializer.instance.weight
+        super().perform_update(serializer)
+        
+        # Check if weight was updated
+        new_weight = serializer.instance.weight
+        if old_weight != new_weight and new_weight is not None:
+            self._sync_weight_to_goals(serializer.instance.user, new_weight)
+    
+    def _sync_weight_to_goals(self, user, new_weight):
+        """Sync profile weight to active weight-related goals"""
+        # Weight-related units
+        weight_units = ['kg', 'lbs']
+        
+        # Update current_value for active goals with weight units
+        active_weight_goals = Goal.objects.filter(
+            user=user,
+            is_active=True,
+            unit__in=weight_units
+        )
+        
+        for goal in active_weight_goals:
+            goal.current_value = new_weight
+            goal.save()
     
     def update(self, request, *args, **kwargs):
         """Update existing profile"""

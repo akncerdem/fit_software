@@ -85,6 +85,16 @@ class Goal(models.Model):
     def remaining(self):
         return round(abs(self.target_value - self.current_value), 1)
 
+    @property
+    def is_goal_completed(self):
+        """Check if goal is completed based on progress logic"""
+        if self.start_value > self.target_value:
+            # Decrease goal (e.g., weight loss)
+            return self.current_value <= self.target_value
+        else:
+            # Increase goal (e.g., weight gain, running distance)
+            return self.current_value >= self.target_value
+
 # =============================================================================
 # SERIALIZERS
 # =============================================================================
@@ -110,18 +120,64 @@ class GoalSerializer(serializers.ModelSerializer):
             validated_data['user'] = request.user
         else:
             validated_data['user'] = User.objects.first()
+        instance = super().create(validated_data)
         
-        # start_value kontrolü
-        if 'start_value' not in validated_data and 'current_value' in validated_data:
-            validated_data['start_value'] = validated_data['current_value']
-            
-        return super().create(validated_data)
+        # Check if goal is already completed upon creation
+        if instance.is_goal_completed and not instance.is_completed:
+            instance.is_completed = True
+            instance.save()
+            # Award badge for goal completion
+            from .badges import BadgeService
+            BadgeService.award_goal_completion_badge(instance.user, instance)
+        
+        return instance
+        
+    def update(self, instance, validated_data):
+        old_current_value = instance.current_value
+        instance = super().update(instance, validated_data)
+        
+        # Check if goal is completed (only if current_value was updated)
+        if ('current_value' in validated_data and 
+            not instance.is_completed and 
+            instance.is_goal_completed):
+            instance.is_completed = True
+            instance.save()
+            # Award badge for goal completion
+            from .badges import BadgeService
+            BadgeService.award_goal_completion_badge(instance.user, instance)
+        
+        return instance
 
 class GoalUpdateProgressSerializer(serializers.Serializer):
     current_value = serializers.FloatField(min_value=0)
     
     def update(self, instance, validated_data):
+        old_current_value = instance.current_value
         instance.current_value = validated_data['current_value']
+        
+        # Update profile weight for weight-related goals
+        if instance.unit in ['kg', 'lbs']:
+            from .models import Profile
+            try:
+                profile = Profile.objects.get(user=instance.user)
+                # Convert lbs to kg if needed
+                weight_in_kg = instance.current_value
+                if instance.unit == 'lbs':
+                    weight_in_kg = instance.current_value * 0.453592  # lbs to kg conversion
+                
+                profile.weight = weight_in_kg
+                profile.save()
+            except Profile.DoesNotExist:
+                # Create profile if it doesn't exist
+                Profile.objects.create(user=instance.user, weight=weight_in_kg if instance.unit == 'kg' else instance.current_value * 0.453592)
+        
+        # Check if goal is completed
+        if not instance.is_completed and instance.is_goal_completed:
+            instance.is_completed = True
+            # Award badge for goal completion
+            from .badges import BadgeService
+            BadgeService.award_goal_completion_badge(instance.user, instance)
+        
         instance.save()
         return instance
 
