@@ -11,6 +11,94 @@ from .serializers import (
     WorkoutExerciseSerializer,
 )
 
+import os
+import re
+import json
+import requests
+
+# --- AI WORKOUT SUGGESTION HELPERS ---
+def _is_unknown_text(t: str) -> bool:
+    t = (t or "").strip()
+    if len(t) < 3:
+        return True
+
+    # At least one letter
+    if not re.search(r"[a-zA-ZçğıöşüÇĞİÖŞÜ]", t):
+        return True
+
+    # same char repeated
+    if re.fullmatch(r"(.)\1{3,}", t):
+        return True
+
+    tl = t.lower()
+
+    # long consonant streak (gibberish)
+    if re.search(r"[bcçdfgğhjklmnprsştvyz]{5,}", tl):
+        return True
+
+    # very low vowel ratio
+    letters = re.findall(r"[a-zA-ZçğıöşüÇĞİÖŞÜ]", t)
+    if len(letters) >= 6:
+        vowels = set(list("aeiouöüıAEIOUÖÜİ"))
+        vowel_count = sum(1 for ch in letters if ch in vowels)
+        if (vowel_count / len(letters)) < 0.28:
+            return True
+
+    return False
+
+
+def _extract_json(text: str):
+    if not text:
+        return None
+    m = re.search(r"\{.*\}", text, re.S)
+    if not m:
+        return None
+    try:
+        return json.loads(m.group(0))
+    except Exception:
+        return None
+
+
+def _groq_chat(prompt: str, model=None):
+    api_key = os.getenv("GROQ_API_KEY")
+    if not api_key:
+        return None, "Missing GROQ_API_KEY"
+
+    url = "https://api.groq.com/openai/v1/chat/completions"
+    model = model or os.getenv("GROQ_MODEL") or "llama-3.1-8b-instant"
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+    }
+
+    payload = {
+        "model": model,
+        "temperature": 0.2,
+        "messages": [
+            {
+                "role": "system",
+                "content": (
+                    "You are a fitness coach. Return ONLY valid JSON. "
+                    "No markdown, no explanations. "
+                    "Schema: {recognized:boolean, message:string, alternative:null|{title:string, notes:string, exercises:[{name:string, sets:int, reps:string}]}}. "
+                    "If the title is unclear or not a workout, set recognized=false and alternative=null."
+                ),
+            },
+            {"role": "user", "content": prompt},
+        ],
+    }
+
+    try:
+        r = requests.post(url, headers=headers, json=payload, timeout=15)
+        if r.status_code >= 400:
+            return None, f"Groq error {r.status_code}: {r.text[:200]}"
+        data = r.json()
+        content = data["choices"][0]["message"]["content"]
+        return content, None
+    except Exception as e:
+        return None, str(e)
+
 class WorkoutTemplateViewSet(viewsets.ModelViewSet):
     """
     API endpoint for viewing and editing Workout Templates (Plans).
@@ -34,6 +122,110 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
         new_session = template.create_session()
         serializer = WorkoutSessionSerializer(new_session)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
+
+
+    @action(detail=False, methods=['post'], url_path='suggest')
+    def suggest(self, request):
+        title = (request.data.get('title') or '').strip()
+        notes = (request.data.get('notes') or request.data.get('description') or '').strip()
+    
+        if _is_unknown_text(title):
+            return Response({
+                "recognized": False,
+                "message": "Unknown goal. Please provide a clear description of your fitness    goal.",
+                "alternative": None
+            }, status=status.HTTP_200_OK)
+    
+        prompt = (
+            f"Workout title: {title}\n"
+            f"Notes: {notes}\n\n"
+            "Create a workout suggestion for this title. "
+            "Pick 4-8 common exercises. Use concise names like 'Back Squat', 'Bench Press',     'Deadlift'. "
+            "Return JSON in the required schema."
+        )
+    
+        content, err = _groq_chat(prompt)
+        if content:
+            parsed = _extract_json(content)
+            if isinstance(parsed, dict) and "recognized" in parsed and "message" in parsed:
+                if not parsed.get("recognized"):
+                    parsed["alternative"] = None
+                else:
+                    alt = parsed.get("alternative") or {}
+                    exs = alt.get("exercises") or []
+                    if not isinstance(exs, list):
+                        exs = []
+                    cleaned = []
+                    for ex in exs[:10]:
+                        if not isinstance(ex, dict):
+                            continue
+                        name = str(ex.get("name") or "").strip()
+                        if not name:
+                            continue
+                        sets = ex.get("sets", 3)
+                        try:
+                            sets = int(sets)
+                        except Exception:
+                            sets = 3
+                        reps = str(ex.get("reps") or "8-12").strip() or "8-12"
+                        cleaned.append({"name": name, "sets": sets, "reps": reps})
+                    parsed["alternative"] = {
+                        "title": str(alt.get("title") or title).strip() or title,
+                        "notes": str(alt.get("notes") or notes).strip(),
+                        "exercises": cleaned
+                    }
+                return Response(parsed, status=status.HTTP_200_OK)
+    
+        # Fallback (rule-based) if Groq fails
+        lower = title.lower()
+    
+        if any(k in lower for k in ["leg", "squat", "lower"]):
+            exercises = [
+                {"name": "Back Squat", "sets": 4, "reps": "5-8"},
+                {"name": "Romanian Deadlift", "sets": 3, "reps": "8-10"},
+                {"name": "Leg Press", "sets": 3, "reps": "10-12"},
+                {"name": "Walking Lunges", "sets": 3, "reps": "10-12"},
+                {"name": "Calf Raises", "sets": 3, "reps": "12-15"},
+            ]
+            return Response({
+                "recognized": True,
+                "message": "Suggested a lower-body strength session based on your title.",
+                "alternative": {"title": title, "notes": notes, "exercises": exercises}
+            }, status=status.HTTP_200_OK)
+    
+        if any(k in lower for k in ["push", "chest", "bench"]):
+            exercises = [
+                {"name": "Bench Press", "sets": 4, "reps": "5-8"},
+                {"name": "Incline Dumbbell Press", "sets": 3, "reps": "8-12"},
+                {"name": "Overhead Press", "sets": 3, "reps": "6-10"},
+                {"name": "Triceps Pushdown", "sets": 3, "reps": "10-12"},
+                {"name": "Lateral Raises", "sets": 3, "reps": "12-15"},
+            ]
+            return Response({
+                "recognized": True,
+                "message": "Suggested an upper-body push session based on your title.",
+                "alternative": {"title": title, "notes": notes, "exercises": exercises}
+            }, status=status.HTTP_200_OK)
+    
+        if any(k in lower for k in ["pull", "back", "row"]):
+            exercises = [
+                {"name": "Pull-Ups", "sets": 4, "reps": "6-10"},
+                {"name": "Barbell Row", "sets": 3, "reps": "6-10"},
+                {"name": "Lat Pulldown", "sets": 3, "reps": "10-12"},
+                {"name": "Face Pulls", "sets": 3, "reps": "12-15"},
+                {"name": "Biceps Curls", "sets": 3, "reps": "10-12"},
+            ]
+            return Response({
+                "recognized": True,
+                "message": "Suggested an upper-body pull session based on your title.",
+                "alternative": {"title": title, "notes": notes, "exercises": exercises}
+            }, status=status.HTTP_200_OK)
+    
+        return Response({
+            "recognized": False,
+            "message": "Unknown goal. Please provide a clear description of your fitness    goal.",
+            "alternative": None
+        }, status=status.HTTP_200_OK)
 
 
 class WorkoutSessionViewSet(viewsets.ModelViewSet):
