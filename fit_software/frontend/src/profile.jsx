@@ -105,11 +105,6 @@ export default function Profile() {
     setError(null);
   };
 
-  const handleAddBadge = () => {
-    setBadgeFormData({ badge_type: '' });
-    setBadgeError(null);
-    setIsBadgeModalOpen(true);
-  };
 
   const handleCloseBadgeModal = () => {
     setIsBadgeModalOpen(false);
@@ -124,25 +119,18 @@ export default function Profile() {
     }));
   };
 
-  const handleBadgeSubmit = async (e) => {
-    e.preventDefault();
-    setIsLoading(true);
-    setBadgeError(null);
+  const handleDeleteBadge = async (badgeId) => {
+    if (!window.confirm('Are you sure you want to delete this badge?')) {
+      return;
+    }
 
     try {
-      const response = await api.post('/badges/', {
-        badge_type: badgeFormData.badge_type
-      });
-      
+      await api.delete(`/badges/${badgeId}/`);
       // Refresh badges list
       await fetchBadges();
-      setIsBadgeModalOpen(false);
-      setBadgeFormData({ badge_type: '' });
     } catch (error) {
-      console.error('Error adding badge:', error);
-      setBadgeError(error.response?.data?.badge_type?.[0] || error.response?.data?.detail || 'Failed to add badge. Please try again.');
-    } finally {
-      setIsLoading(false);
+      console.error('Error deleting badge:', error);
+      alert('Failed to delete badge. Please try again.');
     }
   };
 
@@ -365,26 +353,6 @@ export default function Profile() {
               <div className="badges-card">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                   <h3 className="section-title" style={{ margin: 0 }}>Earned Badges</h3>
-                  <button 
-                    onClick={handleAddBadge}
-                    style={{
-                      padding: '0.4rem 0.8rem',
-                      fontSize: '0.85rem',
-                      backgroundColor: '#4CAF50',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '6px',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.3rem',
-                      fontWeight: '500'
-                    }}
-                    title="Add Badge"
-                  >
-                    <span>➕</span>
-                    <span>Add Badge</span>
-                  </button>
                 </div>
                 {badges.length === 0 ? (
                   <div style={{ 
@@ -398,7 +366,14 @@ export default function Profile() {
                 ) : (
                   <div className="badges-grid">
                     {badges.map((badge, index) => (
-                      <div key={index} className="badge-item">
+                      <div key={badge.id} className="badge-item">
+                        <button 
+                          className="badge-delete-btn"
+                          onClick={() => handleDeleteBadge(badge.id)}
+                          title="Delete Badge"
+                        >
+                          ×
+                        </button>
                         <div className="badge-icon-large">{getBadgeIcon(badge.badge_type)}</div>
                         <div className="badge-name">{badge.badge_type}</div>
                         <div className="badge-date">{formatBadgeDate(badge.awarded_at)}</div>

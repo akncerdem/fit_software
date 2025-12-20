@@ -328,10 +328,34 @@
   border-radius: 12px;
   text-align: center;
   transition: transform 0.2s;
+  position: relative;
 }
 
 .badge-item:hover {
   transform: translateY(-4px);
+}
+
+.badge-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.badge-delete-btn:hover {
+  background-color: #dc2626;
 }
 
 .badge-icon-large {

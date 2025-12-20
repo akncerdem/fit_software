@@ -132,7 +132,32 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
     current_value = serializers.FloatField(min_value=0)
 
     def update(self, instance, validated_data):
+        old_current_value = instance.current_value
         instance.current_value = validated_data['current_value']
+        
+        # Update profile weight for weight-related goals
+        if instance.unit in ['kg', 'lbs']:
+            from .models import Profile
+            try:
+                profile = Profile.objects.get(user=instance.user)
+                # Convert lbs to kg if needed
+                weight_in_kg = instance.current_value
+                if instance.unit == 'lbs':
+                    weight_in_kg = instance.current_value * 0.453592  # lbs to kg conversion
+                
+                profile.weight = weight_in_kg
+                profile.save()
+            except Profile.DoesNotExist:
+                # Create profile if it doesn't exist
+                Profile.objects.create(user=instance.user, weight=weight_in_kg if instance.unit == 'kg' else instance.current_value * 0.453592)
+        
+        # Check if goal is completed
+        if not instance.is_completed and instance.is_goal_completed:
+            instance.is_completed = True
+            # Award badge for goal completion
+            from .badges import BadgeService
+            BadgeService.award_goal_completion_badge(instance.user, instance)
+        
         instance.save()
         return instance
 
