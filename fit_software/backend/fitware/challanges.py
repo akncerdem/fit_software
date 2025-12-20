@@ -7,6 +7,7 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny
 
 from .models import Challenge, ChallengeJoined
+from .goals import Goal
 
 
 class ChallengeSerializer(serializers.ModelSerializer):
@@ -129,11 +130,37 @@ class ChallengeViewSet(viewsets.ModelViewSet):
     # 🔹 ÖNEMLİ: Challenge create ederken created_user'ı doldur
     # ve otomatik olarak o challenge'a join et
     def perform_create(self, serializer):
+        """
+        Challenge yaratılırken:
+        1) Kullanıcı için bir Goal oluştur
+        2) Challenge.goal = o goal yap
+        3) Challenge'ı oluşturan kişiyi otomatik join et
+        """
         user = self._get_effective_user(self.request)
         if not user:
             raise serializers.ValidationError("No user available")
 
-        challenge = serializer.save(created_user=user)
+        # serializer.validated_data içinden alanları al
+        data = serializer.validated_data
+
+        # 1) Goal oluştur
+        goal = Goal.objects.create(
+            user=user,
+            title=data.get("title", ""),
+            description=data.get("description", ""),
+            target_value=data.get("target_value"),
+            unit=data.get("unit") or "workouts",
+            # start_value ve current_value default 0, is_active default True
+            is_completed=False,
+        )
+
+        # 2) Challenge'ı oluştur ve ona goal'i bağla
+        challenge = serializer.save(
+            created_user=user,
+            goal=goal,
+        )
+
+        # 3) Oluşturan kişiyi otomatik olarak challenge'a join et
         ChallengeJoined.objects.get_or_create(user=user, challenge=challenge)
 
     @action(detail=False, methods=["get"])
