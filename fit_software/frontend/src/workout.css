@@ -1355,3 +1355,78 @@
     width: 100%;
   }
 }
+
+
+/* --- AI Suggestion (Workout modal) --- */
+.ai-actions{
+  display:flex;
+  justify-content:flex-end;
+  margin: 8px 0 12px;
+}
+
+.ai-btn{
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-btn:disabled{
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ai-card{
+  border: 1px solid rgba(0,0,0,0.12);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  background: #fff;
+}
+
+.ai-card-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.ai-title{
+  font-weight: 700;
+}
+
+.ai-toggle{
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.ai-msg{
+  margin: 8px 0;
+  line-height: 1.4;
+}
+
+.ai-alt{
+  margin-top: 8px;
+  padding: 10px;
+  border-radius: 10px;
+  background: rgba(0,0,0,0.03);
+}
+
+.ai-ex-list ul{
+  margin: 6px 0 0 18px;
+}
+
+.ai-apply{
+  margin-top: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,0.12);
+  background: #fff;
+  cursor: pointer;
+  font-weight: 700;
+}

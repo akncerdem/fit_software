@@ -17,16 +17,25 @@ export default function Workout() {
 
   //  MODAL VE FORM STATE'LERİ 
   const [showModal, setShowModal] = useState(false);
+
+  // AI suggestion state (Create New Workout)
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+  const [aiOpen, setAiOpen] = useState(true);
+
   const [showDetailModal, setShowDetailModal] = useState(false);
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [selectedWorkout, setSelectedWorkout] = useState(null);
   const [viewMode, setViewMode] = useState('sessions'); // 'sessions' or 'templates'
   
-  const [formData, setFormData] = useState({
+  const DEFAULT_TEMPLATE_FORM = {
     title: "",
     duration: "",
     notes: ""
-  });
+  };
+
+  const [formData, setFormData] = useState(DEFAULT_TEMPLATE_FORM);
 
   // Complete workout form
   const [completeForm, setCompleteForm] = useState({
@@ -237,19 +246,17 @@ export default function Workout() {
 
       // 2. Create the Template
       // Note: Added '/api/' just in case. Remove if your axios config handles it.
-      const templateResponse = await api.post('/workouts/templates/', templatePayload);
+      const templateResponse = await api.post('workouts/templates/', templatePayload);
       console.log("Template Created:", templateResponse.data); // Debug 2
       
       const templateId = templateResponse.data.id;
 
       // 3. Start the Session immediately
-      await api.post(`/workouts/templates/${templateId}/start_session/`);
+      await api.post(`workouts/templates/${templateId}/start_session/`);
       console.log("Session Started Successfully"); // Debug 3
 
       // 4. Cleanup
-      setShowModal(false);
-      setFormData({ title: "", notes: "" });
-      setSelectedExercises([]);
+      closeCreateWorkoutModal();
       
       // 5. Refresh Lists
       // Make sure these functions exist and work!
@@ -299,6 +306,207 @@ export default function Workout() {
       ex.id === exerciseId ? { ...ex, [field]: value } : ex
     ));
   };
+
+
+
+// --- AI helpers (workout) ---
+const _norm = (s) => String(s || "")
+  .toLowerCase()
+  .replace(/[^a-z0-9çğıöşü]/g, " ")
+  .replace(/\s+/g, " ")
+  .trim();
+const _stemWord = (w) => (w.length > 3 && w.endsWith("s") ? w.slice(0, -1) : w);
+
+const _tokens = (s) =>
+  _norm(s)
+    .split(" ")
+    .map(_stemWord)
+    .filter(Boolean);
+
+const _jaccard = (aSet, bSet) => {
+  let inter = 0;
+  for (const x of aSet) if (bSet.has(x)) inter++;
+  const union = aSet.size + bSet.size - inter;
+  return union === 0 ? 0 : inter / union;
+};
+const inferExerciseMeta = (name) => {
+  const n = _norm(name);
+
+  // cardio keywords
+  if (/(run|jog|walk|cycle|bike|swim|row|cardio)/i.test(n)) {
+    return { category: "cardio", metric_type: "distance" };
+  }
+
+  // time-based
+  if (/(minute|min|hour|time|plank)/i.test(n)) {
+    return { category: "cardio", metric_type: "time" };
+  }
+
+  // default strength
+  return { category: "strength", metric_type: "weight" };
+};
+
+const findBestExerciseMatch = (name, list) => {
+  const sTok = new Set(_tokens(name));
+  let best = null;
+  let bestScore = 0;
+
+  for (const ex of list) {
+    const score = _jaccard(sTok, new Set(_tokens(ex.name)));
+    if (score > bestScore) {
+      bestScore = score;
+      best = ex;
+    }
+  }
+
+  // eşik: istersen 0.5 yapabilirsin
+  return bestScore >= 0.45 ? best : null;
+};
+
+const closeCreateWorkoutModal = () => {
+  setShowModal(false);
+  setFormData(DEFAULT_TEMPLATE_FORM);
+  setSelectedExercises([]);
+  setExerciseSearch("");
+  setShowExerciseDropdown(false);
+
+  setAiSuggestion(null);
+  setAiError(null);
+  setAiLoading(false);
+  setAiOpen(true);
+};
+
+const handleGetWorkoutAiSuggestion = async () => {
+  const title = (formData.title || "").trim();
+  const notes = (formData.notes || "").trim();
+
+  if (!title) {
+    setAiError("Please enter a workout title first.");
+    setAiSuggestion(null);
+    setAiOpen(true);
+    return;
+  }
+
+  setAiLoading(true);
+  setAiError(null);
+
+  try {
+    const resp = await api.post("workouts/templates/suggest/", { title, notes });
+    setAiSuggestion(resp.data);
+    setAiOpen(true);
+  } catch (err) {
+    const msg =
+      err?.response?.data?.detail ||
+      err?.response?.data?.message ||
+      "Failed to get AI suggestion.";
+    setAiError(msg);
+    setAiSuggestion(null);
+    setAiOpen(true);
+  } finally {
+    setAiLoading(false);
+  }
+};
+
+const handleApplyWorkoutAiSuggestion = async () => {
+  if (!aiSuggestion?.recognized || !aiSuggestion?.alternative) return;
+
+  const alt = aiSuggestion.alternative;
+
+  // title/notes doldur
+  setFormData((prev) => ({
+    ...prev,
+    title: alt.title || prev.title,
+    notes: alt.notes ?? prev.notes,
+  }));
+
+  const suggested = Array.isArray(alt.exercises) ? alt.exercises : [];
+  if (suggested.length === 0) return;
+
+  setAiError(null);
+  setAiLoading(true);
+
+  const selected = [];
+  const usedIds = new Set();
+
+  // bu apply sırasında oluşturduklarımızı da listeye ekleyelim
+  let exercisePool = [...availableExercises];
+  const newlyCreated = [];
+  const failedToCreate = [];
+
+  try {
+    for (const item of suggested) {
+      const rawName = String(item?.name || "").trim();
+      if (!rawName) continue;
+
+      // 1) önce mevcut egzersizlerde en iyi eşleşmeyi bul
+      let ex = findBestExerciseMatch(rawName, exercisePool);
+
+      // 2) yoksa: create et
+      if (!ex) {
+        try {
+          const meta = inferExerciseMeta(rawName);
+          const payload = { name: rawName, category: meta.category, metric_type: meta.metric_type };
+
+          const res = await api.post("exercises/", payload);
+          ex = res.data;
+
+          newlyCreated.push(ex);
+          exercisePool.push(ex); // bir sonraki item için pool genişlesin
+        } catch (e) {
+          failedToCreate.push(rawName);
+          continue;
+        }
+      }
+
+      // 3) seçili listeye ekle (duplicate olmasın)
+      if (ex && !usedIds.has(ex.id)) {
+        usedIds.add(ex.id);
+        const sets = Number(item?.sets) || 3;
+        const reps = String(item?.reps || "8-12");
+        selected.push({ ...ex, sets, reps });
+      }
+    }
+
+    // hiç seçilemediyse: Unknown
+    if (selected.length === 0) {
+      setAiSuggestion({
+        recognized: false,
+        message: "Unknown workout. Please provide a clear workout title or add exercises first.",
+        alternative: null,
+      });
+      setAiOpen(true);
+      return;
+    }
+
+    // yeni egzersizler varsa available listesine ekle
+    if (newlyCreated.length > 0) {
+      setAvailableExercises((prev) => {
+        const ids = new Set(prev.map((x) => x.id));
+        const merged = [...prev];
+        for (const ex of newlyCreated) {
+          if (!ids.has(ex.id)) merged.push(ex);
+        }
+        return merged;
+      });
+    }
+
+    // formdaki selected exercises’i doldur
+    setSelectedExercises(selected);
+
+    // bazıları create edilemediyse uyarı göster
+    if (failedToCreate.length > 0) {
+      setAiError(
+        "Some suggested exercises could not be created: " +
+          failedToCreate.slice(0, 6).join(", ") +
+          (failedToCreate.length > 6 ? " ..." : "")
+      );
+      setAiOpen(true);
+    }
+  } finally {
+    setAiLoading(false);
+  }
+};
+
 
   // Yeni Custom Egzersiz Oluştur
   const handleCreateExercise = async () => {
@@ -674,7 +882,14 @@ export default function Workout() {
                   Templates
                 </button>
               </div>
-              <button className="btn-new-workout" onClick={() => setShowModal(true)}>
+              <button className="btn-new-workout" onClick={() => {
+                  setShowModal(true);
+                  setFormData(DEFAULT_TEMPLATE_FORM);
+                  setSelectedExercises([]);
+                  setAiSuggestion(null);
+                  setAiError(null);
+                  setAiOpen(true);
+                }}>
                 <span>➕ New Workout</span>
               </button>
             </div>
@@ -1108,7 +1323,7 @@ export default function Workout() {
 
       {/*  MODAL (POPUP FORM) */}
       {showModal && (
-        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+        <div className="modal-overlay" onClick={closeCreateWorkoutModal}>
           {/* İçeriğe tıklayınca kapanmasın diye stopPropagation kullanıyoruz */}
           <div className="modal-content" onClick={e => e.stopPropagation()}>
             <h2 className="modal-title">Create New Workout</h2>
@@ -1126,7 +1341,81 @@ export default function Workout() {
                 />
               </div>
 
-              {/* EXERCISES SECTION */}
+              
+
+<div className="ai-actions">
+  <button
+    type="button"
+    className="ai-btn"
+    onClick={handleGetWorkoutAiSuggestion}
+    disabled={aiLoading}
+  >
+    {aiLoading ? "Getting..." : "✨ Get AI Suggestions"}
+  </button>
+</div>
+
+{(aiError || aiSuggestion) && (
+  <div className="ai-card">
+    <div className="ai-card-header">
+      <div className="ai-title">
+        ⚠️ {aiError ? "AI Error" : (aiSuggestion?.recognized ? "Suggestion" : "Unknown Goal")}
+      </div>
+
+      <button
+        type="button"
+        className="ai-toggle"
+        onClick={() => setAiOpen((p) => !p)}
+      >
+        {aiOpen ? "Show Less ▲" : "Show More ▼"}
+      </button>
+    </div>
+
+    {aiOpen && (
+      <>
+        {aiError ? (
+          <p className="ai-msg">{aiError}</p>
+        ) : (
+          <>
+            <p className="ai-msg">{aiSuggestion?.message}</p>
+
+            {aiSuggestion?.recognized && aiSuggestion?.alternative && (
+              <div className="ai-alt">
+                <div><b>Workout:</b> {aiSuggestion.alternative.title}</div>
+                {aiSuggestion.alternative.notes ? (
+                  <div><b>Notes:</b> {aiSuggestion.alternative.notes}</div>
+                ) : null}
+
+                {Array.isArray(aiSuggestion.alternative.exercises) && aiSuggestion.alternative.exercises.length > 0 && (
+                  <div className="ai-ex-list">
+                    <div><b>Exercises:</b></div>
+                    <ul>
+                      {aiSuggestion.alternative.exercises.slice(0, 10).map((ex, i) => (
+                        <li key={i}>{ex.name} — {ex.sets} sets, {ex.reps} reps</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {aiSuggestion?.recognized && aiSuggestion?.alternative && (
+              <button
+                type="button"
+                className="ai-apply"
+                onClick={handleApplyWorkoutAiSuggestion}
+              >
+                ✅ Apply Suggestions to Form
+              </button>
+            )}
+          </>
+        )}
+      </>
+    )}
+  </div>
+)}
+
+{/* EXERCISES SECTION */}
+
               <div className="form-group">
                 <label className="form-label">Exercises</label>
                 
@@ -1264,7 +1553,7 @@ export default function Workout() {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={() => setShowModal(false)}>
+                <button type="button" className="btn-cancel" onClick={closeCreateWorkoutModal}>
                   Cancel
                 </button>
                 <button type="submit" className="btn-save" disabled={selectedExercises.length === 0}>
