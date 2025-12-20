@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -308,4 +309,4 @@ urlpatterns = [
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
     path('api/', include(router.urls)),
-]
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

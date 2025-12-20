@@ -13,11 +13,44 @@ from .goals import Goal
 class ProfileSerializer(serializers.ModelSerializer):
     """Profile serializer for CRUD operations"""
     user_id = serializers.IntegerField(source='user.id', read_only=True)
+    profile_picture = serializers.SerializerMethodField(read_only=True)
+    profile_picture_upload = serializers.ImageField(write_only=True, required=False, allow_null=True)
+    
+    def get_profile_picture(self, obj):
+        """Return the full URL for the profile picture"""
+        if obj.profile_picture:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.profile_picture.url)
+            return obj.profile_picture.url
+        return None
     
     class Meta:
         model = Profile
-        fields = ['id', 'user_id', 'bio', 'fitness_level', 'height', 'weight']
-        read_only_fields = ['id', 'user_id']
+        fields = ['id', 'user_id', 'bio', 'fitness_level', 'height', 'weight', 'profile_picture', 'profile_picture_upload']
+        read_only_fields = ['id', 'user_id', 'profile_picture']
+    
+    def create(self, validated_data):
+        """Handle profile picture upload during creation"""
+        profile_picture = validated_data.pop('profile_picture_upload', None)
+        profile = Profile.objects.create(**validated_data)
+        if profile_picture:
+            profile.profile_picture = profile_picture
+            profile.save()
+        return profile
+    
+    def update(self, instance, validated_data):
+        """Handle profile picture upload during update"""
+        profile_picture = validated_data.pop('profile_picture_upload', None)
+        
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        
+        if profile_picture:
+            instance.profile_picture = profile_picture
+        
+        instance.save()
+        return instance
 
 # =============================================================================
 # VIEWS
