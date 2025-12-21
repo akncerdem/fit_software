@@ -22,6 +22,74 @@ const UNIT_LABELS = {
   'reps': 'reps', 'cal': 'calories', 'fav': '% (Body Fat)', 'workouts': 'workouts'
 };
 
+// --- AI normalize helpers ---
+const normalizeUnit = (u) => {
+  if (!u) return "";
+  const s = String(u).trim().toLowerCase();
+
+  const map = {
+    // distance
+    "kilometer": "km", "kilometers": "km", "kilometre": "km", "kilometres": "km", "km": "km",
+    "meter": "m", "meters": "m", "metre": "m", "m": "m",
+    "mile": "miles", "miles": "miles",
+
+    // time
+    "minute": "min", "minutes": "min", "min": "min",
+    "hour": "hr", "hours": "hr", "hr": "hr",
+
+    // weight
+    "kilogram": "kg", "kilograms": "kg", "kg": "kg",
+    "pound": "lbs", "pounds": "lbs", "lb": "lbs", "lbs": "lbs",
+
+    // others
+    "calorie": "cal", "calories": "cal", "cal": "cal",
+    "%": "fav", "percent": "fav", "percentage": "fav",
+    "lap": "laps", "laps": "laps",
+    "set": "sets", "sets": "sets",
+    "rep": "reps", "reps": "reps",
+    "workout": "workouts", "workouts": "workouts",
+  };
+
+  return map[s] || s;
+};
+
+const resolveGoalIcon = (alt) => {
+  // 1) direct icon match
+  if (alt?.icon && GOAL_TYPES[alt.icon]) return alt.icon;
+
+  // 2) match by label
+  const t = String(alt?.type || "").trim().toLowerCase();
+  if (!t) return null;
+
+  const exact = Object.entries(GOAL_TYPES).find(
+    ([, v]) => v.label.toLowerCase() === t
+  );
+  if (exact) return exact[0];
+
+  // 3) synonyms
+  const synonyms = {
+    "lose weight": "📉",
+    "weightloss": "📉",
+    "gain weight": "📈",
+    "running": "🏃",
+    "run": "🏃",
+    "swimming": "🏊",
+    "cycle": "🚲",
+    "cycling": "🚲",
+    "workout": "💪",
+    "strength": "💪",
+    "body fat": "⚖️",
+    "cardio": "🔥",
+  };
+
+  for (const [key, icon] of Object.entries(synonyms)) {
+    if (t.includes(key) && GOAL_TYPES[icon]) return icon;
+  }
+
+  return null;
+};
+
+
 // --- BİLEŞENLER ---
 const CircularProgress = ({ size, strokeWidth, percentage, color }) => {
   const safePercentage = isNaN(percentage) ? 0 : percentage; 
@@ -59,6 +127,69 @@ export default function Goal() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [weekOffset, setWeekOffset] = useState(0);
+  const [aiOpen, setAiOpen] = useState(true);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState(null);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+
+
+
+
+const handleGetAiSuggestion = async () => {
+  
+  try {
+    setAiLoading(true);
+    setAiError(null);
+    const res = await goalsApi.suggest(newGoal.title, newGoal.description);
+    setAiSuggestion(res);
+    setAiOpen(true);
+  } catch (e) {
+    console.error(e);
+    setAiError("Failed to get suggestion.");
+  } finally {
+    setAiLoading(false);
+  }
+};
+
+const handleApplySuggestion = () => {
+  if (!aiSuggestion?.alternative) return;
+
+  const alt = aiSuggestion.alternative;
+
+  // 1) Type resolve (must match your dropdown types)
+  const icon = resolveGoalIcon(alt);
+
+  if (!icon) {
+    // Type is not supported -> show Unknown goal message and don't modify form
+    setAiSuggestion({
+      recognized: false,
+      message: "Unknown goal. Please provide a clear description of your fitness goal.",
+      alternative: null,
+    });
+    setAiOpen(true);
+    return;
+  }
+
+  // 2) Unit resolve
+  const allowedUnits = GOAL_TYPES[icon]?.units || [];
+  const normalizedAltUnit = normalizeUnit(alt.unit);
+  const unit =
+    allowedUnits.includes(normalizedAltUnit)
+      ? normalizedAltUnit
+      : (allowedUnits[0] || newGoal.unit);
+
+  // 3) Apply into form (Type + Unit + Target)
+  setNewGoal((prev) => ({
+    ...prev,
+    icon,
+    unit,
+    target_value: alt.target_value ?? prev.target_value,
+    description: prev.description
+      ? prev.description
+      : (alt.timeline_days ? `Timeline: ${alt.timeline_days} days` : prev.description),
+  }));
+};
+
 
   // Modallar
     // Modal dışına tıklayınca kapatma: sadece tıklama dışarıda başlar ve dışarıda biterse kapansın
@@ -74,7 +205,9 @@ export default function Goal() {
   };
 
 const [isModalOpen, setIsModalOpen] = useState(false);
-  const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯', current_value: 0, target_value: '', unit: 'workouts' });
+  
+const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯', current_value: 0, target_value: '', unit: 'workouts' });
+  const titleOk = !!newGoal.title?.trim();
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null); 
   const [updateValue, setUpdateValue] = useState('');
@@ -363,7 +496,12 @@ const [isModalOpen, setIsModalOpen] = useState(false);
 
           <div className="goals-header">
             <div className="goals-title-section"><h1 className="goals-title">My Goals</h1><p className="goals-description">Track your fitness objectives</p></div>
-            <button className="btn-add-goal" onClick={() => setIsModalOpen(true)}><span className="plus-icon">+</span><span>Add New Goal</span></button>
+            <button className="btn-add-goal" onClick={() => {
+            setIsModalOpen(true);
+            setAiSuggestion(null);
+            setAiError(null);
+            setAiOpen(true);
+            }}><span className="plus-icon">+</span><span>Add New Goal</span></button>
           </div>
 
           <div className="goals-grid">
@@ -398,6 +536,72 @@ const [isModalOpen, setIsModalOpen] = useState(false);
             <form onSubmit={handleCreateGoal} className="goal-form">
               <div className="form-group"><label className="form-label">Title</label><input type="text" className="form-input" value={newGoal.title} onChange={(e) => setNewGoal({...newGoal, title: e.target.value})} required /></div>
               <div className="form-group"><label className="form-label">Desc</label><textarea className="form-textarea" value={newGoal.description} onChange={(e) => setNewGoal({...newGoal, description: e.target.value})} rows="2" /></div>
+             <div className="ai-box">
+  <button
+    type="button"
+    className="ai-btn"
+    onClick={handleGetAiSuggestion}
+    disabled={!titleOk || aiLoading}
+  >
+    {aiLoading ? "Loading..." : "Get AI Suggestions"}
+  </button>
+
+{(aiError || aiSuggestion) && (
+  <div className="ai-card">
+    <div className="ai-card-header">
+      <div className="ai-title">
+        ⚠️ {aiError ? "AI Error" : (aiSuggestion?.recognized ? "Suggestion" : "Unknown Goal")}
+      </div>
+
+      <button
+        type="button"
+        className="ai-toggle"
+        onClick={() => setAiOpen((p) => !p)}
+      >
+        {aiOpen ? "Show Less ▲" : "Show More ▼"}
+      </button>
+    </div>
+
+    {aiOpen && (
+      <>
+        {aiError ? (
+          <p className="ai-msg">{aiError}</p>
+        ) : (
+          <>
+            <p className="ai-msg">{aiSuggestion?.message}</p>
+
+            {/* Alternative sadece recognized=true iken gözüksün */}
+            {aiSuggestion?.recognized && aiSuggestion?.alternative && (
+              <div className="ai-alt">
+                <div><b>Recommended Alternative:</b></div>
+                <div>
+                  <b>Target:</b> {aiSuggestion.alternative.target_value}{" "}
+                  {aiSuggestion.alternative.unit}
+                </div>
+                <div><b>Timeline:</b> {aiSuggestion.alternative.timeline_days} days</div>
+                <div><b>Type:</b> {aiSuggestion.alternative.type}</div>
+              </div>
+            )}
+
+            {/* Apply butonu da sadece recognized=true + alternative varsa çıksın */}
+            {aiSuggestion?.recognized && aiSuggestion?.alternative && (
+              <button
+                type="button"
+                className="ai-apply"
+                onClick={handleApplySuggestion}
+              >
+                ✅ Apply Suggestions to Form
+              </button>
+            )}
+          </>
+        )}
+      </>
+    )}
+  </div>
+)}
+</div>
+
+
               <div className="form-row">
                  <div className="form-group"><label className="form-label">Type</label><select className="form-select" value={newGoal.icon} onChange={(e) => {const icon=e.target.value; setNewGoal({...newGoal, icon, unit: GOAL_TYPES[icon]?.units[0] || 'workouts'})}}>{Object.entries(GOAL_TYPES).map(([k,v])=><option key={k} value={k}>{k} {v.label}</option>)}</select></div>
                  <div className="form-group"><label className="form-label">Unit</label><select className="form-select" value={newGoal.unit} onChange={(e) => setNewGoal({...newGoal, unit: e.target.value})}>{(GOAL_TYPES[newGoal.icon]?.units||[]).map(u=><option key={u} value={u}>{UNIT_LABELS[u]||u}</option>)}</select></div>
@@ -462,4 +666,5 @@ const [isModalOpen, setIsModalOpen] = useState(false);
       )}
     </div>
   );
+  
 }
