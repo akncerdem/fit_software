@@ -5,7 +5,7 @@ import Anasayfa from "./anasayfa";
 import GoogleCallback from "./GoogleCallback";
 import Workout from './workout';
 import Goal from './goal';
-import Challenges from './challenges'; // ← Dosya adı challanges ise böyle
+import Challenges from './challenges';
 import Profile from './profile';
 
 function ProtectedRoute({ children }) {
@@ -16,9 +16,15 @@ function ProtectedRoute({ children }) {
 export default function App() {
   return (
     <Routes>
+      {/* Auth screens */}
       <Route path="/" element={<Login />} />
+      <Route path="/forgot-password" element={<Login />} />
+      <Route path="/reset-password/:uid/:token" element={<Login />} />
+
       <Route path="/signup" element={<SignUp />} />
       <Route path="/google-callback" element={<GoogleCallback />} />
+
+      {/* Protected screens */}
       <Route
         path="/anasayfa"
         element={
@@ -47,7 +53,7 @@ export default function App() {
         path="/challenges"
         element={
           <ProtectedRoute>
-            <Challenges />  {/* ← Goal değil, Challenges olmalı */}
+            <Challenges />
           </ProtectedRoute>
         }
       />
@@ -55,11 +61,11 @@ export default function App() {
         path="/profile"
         element={
           <ProtectedRoute>
-            <Profile />  {/* ← Goal değil, Profile olmalı */}
+            <Profile />
           </ProtectedRoute>
         }
       />
-      
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
