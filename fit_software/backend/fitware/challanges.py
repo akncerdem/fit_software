@@ -9,9 +9,44 @@ from rest_framework.permissions import AllowAny
 from .models import Challenge, ChallengeJoined
 from .goals import Goal
 
+class ChallengeParticipantSerializer(serializers.ModelSerializer):
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ChallengeJoined
+        fields = [
+            "id",
+            "user_id",          # 👈 React’te (you) için kullanacağız
+            "display_name",     # 👈 ekledik
+            "progress_value",
+            "progress_percent",
+            "is_completed",
+        ]
+
+    def get_display_name(self, obj):
+        user = obj.user
+        if not user:
+            return ""
+
+        full = f"{user.first_name} {user.last_name}".strip()
+        if full:
+            return full
+        if user.username:
+            return user.username
+        return user.email or ""
+
+
+    def get_progress_percent(self, obj):
+        return obj.progress_percent
+
 
 class ChallengeSerializer(serializers.ModelSerializer):
     participants = serializers.SerializerMethodField()
+    participants_detail = ChallengeParticipantSerializer(
+        source="challengejoined_set",
+        many=True,
+        read_only=True,
+    )    
     days_left = serializers.SerializerMethodField()
     is_joined = serializers.SerializerMethodField()
 
@@ -42,6 +77,8 @@ class ChallengeSerializer(serializers.ModelSerializer):
             "progress_value",
             "progress_percent",
             "created_at",
+            "participants_detail",   # 🔹 YENİ
+
         ]
         read_only_fields = [
             "id",
@@ -51,6 +88,7 @@ class ChallengeSerializer(serializers.ModelSerializer):
             "progress_value",
             "progress_percent",
             "created_at",
+            "participants_detail",
         ]
 
     # ---- yardımcı metodlar ----
@@ -93,17 +131,48 @@ class ChallengeProgressSerializer(serializers.Serializer):
     progress_value = serializers.FloatField(min_value=0)
 
     def update(self, instance, validated_data):
-        instance.progress_value = validated_data["progress_value"]
-
-        # Yüzdeyi hesapla (challenge hedefi varsa)
+        """
+        instance: ChallengeJoined
+        - Kullanıcının challenge içindeki ilerlemesini günceller
+        - Aynı kullanıcıya ait eşleşen Goal kaydını da senkronize eder
+        """
+        value = validated_data["progress_value"]
         challenge = instance.challenge
-        if getattr(challenge, "target_value", None):
-            instance.progress_percent = min(
-                100,
-                (instance.progress_value / challenge.target_value) * 100,
-            )
+
+        # 1) ChallengeJoined'i güncelle
+        instance.progress_value = value
+
+        # yüzde hesabı
+        if challenge.target_value:
+            percent = min(100, (value / challenge.target_value) * 100)
+        else:
+            percent = 0
+
+        if challenge.target_value and value >= challenge.target_value:
+            instance.is_completed = True
+        else:
+            instance.is_completed = False
 
         instance.save()
+
+        # 2) Aynı kullanıcı için, challenge ile uyumlu Goal'u bul
+        goal = (
+            Goal.objects.filter(
+                user=instance.user,
+                title=challenge.title,
+                target_value=challenge.target_value,
+                unit=challenge.unit,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if goal:
+            goal.current_value = value
+            if challenge.target_value and value >= challenge.target_value:
+                goal.is_completed = True
+            goal.save()
+
         return instance
 
 
@@ -127,7 +196,7 @@ class ChallengeViewSet(viewsets.ModelViewSet):
             return user
         return User.objects.first()
 
-    # 🔹 ÖNEMLİ: Challenge create ederken created_user'ı doldur
+    # 🔹 Challenge create ederken created_user'ı doldur
     # ve otomatik olarak o challenge'a join et
     def perform_create(self, serializer):
         """
@@ -140,7 +209,6 @@ class ChallengeViewSet(viewsets.ModelViewSet):
         if not user:
             raise serializers.ValidationError("No user available")
 
-        # serializer.validated_data içinden alanları al
         data = serializer.validated_data
 
         # 1) Goal oluştur
@@ -180,6 +248,8 @@ class ChallengeViewSet(viewsets.ModelViewSet):
     def join(self, request, pk=None):
         """
         POST /api/challenges/{id}/join/  → challenge'a katıl
+        - ChallengeJoined oluştur
+        - Eğer bu kullanıcı için daha önce aynı challenge'a ait bir Goal yoksa, yeni Goal yarat
         """
         user = self._get_effective_user(request)
         if not user:
@@ -187,6 +257,33 @@ class ChallengeViewSet(viewsets.ModelViewSet):
                 {"detail": "No user available"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+
+        challenge = self.get_object()
+        joined, created = ChallengeJoined.objects.get_or_create(
+            user=user, challenge=challenge
+        )
+
+        if created:
+            # Bu kullanıcı için aynı özelliklere sahip bir goal var mı?
+            existing_goal = Goal.objects.filter(
+                user=user,
+                title=challenge.title,
+                target_value=challenge.target_value,
+                unit=challenge.unit,
+            ).first()
+
+            if not existing_goal and challenge.target_value is not None:
+                Goal.objects.create(
+                    user=user,
+                    title=challenge.title,
+                    description=challenge.description or "",
+                    target_value=challenge.target_value,
+                    unit=challenge.unit or "workouts",
+                    is_completed=False,
+                )
+
+        serializer = self.get_serializer(challenge)
+        return Response(serializer.data)
 
         challenge = self.get_object()
         ChallengeJoined.objects.get_or_create(user=user, challenge=challenge)
