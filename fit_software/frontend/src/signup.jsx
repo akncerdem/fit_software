@@ -36,7 +36,7 @@ export default function SignUp() {
         formData.repeatPassword
       );
       
-      setMessage("Hesap başarıyla oluşturuldu! Giriş sayfasına yönlendiriliyorsunuz...");
+      setMessage("Account created successfully! Redirecting to login...");
       
       // 2 saniye sonra login sayfasına yönlendir
       setTimeout(() => {
