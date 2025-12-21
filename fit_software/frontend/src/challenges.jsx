@@ -24,9 +24,47 @@ export default function Challenges() {
   const [newBadge, setNewBadge] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [newTargetValue, setNewTargetValue] = useState("");
-  const [newUnit, setNewUnit] = useState("");
+  const [newUnit, setNewUnit] = useState("workouts");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  // goals.jsx ile aynı sözlük
+  const UNIT_LABELS = {
+    kg: "kg (Kilogram)",
+    lbs: "lbs (Pounds)",
+    km: "km (Kilometers)",
+    m: "meters",
+    miles: "miles",
+    min: "minutes",
+    hr: "hours",
+    laps: "laps",
+    sets: "sets",
+    reps: "reps",
+    cal: "calories",
+    fav: "% (Body Fat)",
+    workouts: "workouts",
+  };
+
+  // Challenge için backend'deki UNIT_CHOICES ile uyumlu olanlar
+  const CHALLENGE_UNITS = [
+  "kg",
+  "lbs",
+  "km",
+  "m",
+  "miles",
+  "min",
+  "hr",
+  "laps",
+  "sets",
+  "reps",
+  "cal",
+  "fav",
+  "workouts",
+];
+
+  const CHALLENGE_UNIT_OPTIONS = CHALLENGE_UNITS.map((u) => ({
+    value: u,
+    label: UNIT_LABELS[u] || u,
+  }));
 
   useEffect(() => {
     const token =
@@ -433,6 +471,31 @@ export default function Challenges() {
                     </span>
                   </div>
 
+                {/* Kullanıcının kendi ilerlemesi (sadece joined ise) */}
+                {challenge.is_joined && challenge.target_value && (
+                  <div className="challenge-user-progress">
+                    <div className="challenge-user-progress-header">
+                      <span>Your progress</span>
+                      <span>
+                        {challenge.progress_value} / {challenge.target_value}{" "}
+                        {challenge.unit} (
+                        {Math.round(challenge.progress_percent || 0)}%)
+                      </span>
+                    </div>
+                    <div className="challenge-progress-bar">
+                      <div
+                        className="challenge-progress-fill"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            challenge.progress_percent || 0
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                   <div className="challenge-actions">
                     {challenge.is_joined ? (
                       <>
@@ -443,7 +506,7 @@ export default function Challenges() {
                           View Progress
                         </button>
                         <button
-                          className="btn-join"
+                          className="btn-leave"
                           onClick={() => handleLeave(challenge.id)}
                         >
                           Leave
@@ -559,13 +622,21 @@ export default function Challenges() {
 
               <label className="form-label">
                 Unit
-                <input
-                  type="text"
-                  className="form-input"
+                <select
+                  className="form-select"
                   value={newUnit}
                   onChange={(e) => setNewUnit(e.target.value)}
-                  placeholder="km, workout, kg..."
-                />
+                  required
+                >
+                  <option value="" disabled>
+                    Birim seçin...
+                  </option>
+                  {CHALLENGE_UNIT_OPTIONS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               {createError && (
@@ -692,23 +763,37 @@ export default function Challenges() {
                         <div className="participants-list">
                           <h4>Participants progress</h4>
                           <ul>
-                            {selectedChallenge.participants_detail.map((p) => (
-                              <li key={p.id} className="participants-list-item">
-                                <span className="participant-name">
-                                  {p.display_name}
-                                  {p.user_id === user?.id ? " (you)" : ""}
-                              </span>
-                                <span className="participant-progress">
-                                  {p.progress_value} /{" "}
-                                  {selectedChallenge.target_value}{" "}
-                                  {selectedChallenge.unit}{" "}
-                                  ({Math.round(p.progress_percent || 0)}%)
-                                </span>
-                              </li>
-                            ))}
+                            {[...selectedChallenge.participants_detail]
+                              .sort(
+                                (a, b) =>
+                                  (b.progress_percent || 0) - (a.progress_percent || 0)
+                              )
+                              .map((p, index) => {
+                                const isMe = p.user_id === user?.id;
+
+                                return (
+                                  <li
+                                    key={p.id}
+                                    className={`participants-list-item ${
+                                      isMe ? "participant-me" : ""
+                                    }`}
+                                  >
+                                    <span className="participant-name">
+                                      #{index + 1} {p.display_name}
+                                      {isMe ? " (you)" : ""}
+                                    </span>
+                                    <span className="participant-progress">
+                                      {p.progress_value} / {selectedChallenge.target_value}{" "}
+                                      {selectedChallenge.unit} (
+                                      {Math.round(p.progress_percent || 0)}%)
+                                    </span>
+                                  </li>
+                                );
+                              })}
                           </ul>
                         </div>
                       )}
+
 
                     {/* Senin inputun + buton zaten mevcut */}
                     <div style={{ marginTop: "16px" }}>

@@ -302,6 +302,36 @@
   background-color: #f9fafb;
   border-color: #9ca3af;
 }
+/* Leave button*/
+.btn-leave {
+  padding: 12px 24px;          /* Details ile aynı */
+  border-radius: 8px;          /* 999px yerine 8px */
+  background-color: #dc2626;   /* kırmızı dolu */
+  color: #ffffff;
+  border: 1px solid #dc2626;   /* kenarlık da kırmızı */
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s ease, border-color 0.2s ease,
+    transform 0.1s ease;
+}
+
+.btn-leave:hover {
+  background-color: #b91c1c;
+  border-color: #b91c1c;
+  transform: translateY(-1px);
+}
+
+.btn-leave:active {
+  background-color: #991b1b;
+  border-color: #991b1b;
+  transform: translateY(0);
+}
+
+.btn-leave:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 
 /* Responsive Design */
 @media (max-width: 1200px) {
@@ -563,6 +593,19 @@
   transition: width 0.3s ease;
 }
 
+.challenge-user-progress {
+  margin-top: 12px;
+  margin-bottom: 8px;
+}
+
+.challenge-user-progress-header {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  color: #4b5563;
+  margin-bottom: 4px;
+}
+
 .participants-list {
   margin-top: 16px;
   padding-top: 8px;
@@ -589,3 +632,11 @@
   color: #4b5563;
 }
 
+.participant-me {
+  font-weight: 600;
+  color: #111827;
+}
+
+.participant-me .participant-progress {
+  color: #2563eb;
+}
