@@ -11,6 +11,10 @@ from django.contrib.auth.models import User
 from django.http import JsonResponse
 from django.shortcuts import redirect
 from django.urls import path,include
+from django.core.mail import send_mail
+from django.contrib.auth.tokens import PasswordResetTokenGenerator
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes, force_str
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny
@@ -38,6 +42,9 @@ def health(request):
 @permission_classes([AllowAny])
 def login(request):
     try:
+        from django.utils import timezone
+        from .goals import ActivityLog
+        
         data = request.data
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
@@ -54,6 +61,17 @@ def login(request):
                 {"error": "Invalid email or password."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
+        # Log the login activity
+        try:
+            today = timezone.now().date()
+            ActivityLog.objects.get_or_create(
+                user=user, 
+                date=today, 
+                defaults={'action_type': 'login'}
+            )
+        except Exception as log_err:
+            logger.warning("Could not log activity: %s", log_err)
 
         refresh = RefreshToken.for_user(user)
 
@@ -150,6 +168,75 @@ def signup(request):
             {"error": "Unexpected error during signup."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
+
+
+token_generator = PasswordResetTokenGenerator()
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_request(request):
+    email = (request.data.get("email") or "").strip().lower()
+
+    # Güvenlik: email boş/yanlış olsa bile aynı cevap
+    if not email:
+        return Response({"message": "If the email exists, a reset link was sent."}, status=status.HTTP_200_OK)
+
+    user = User.objects.filter(email=email).first()
+
+    # Email yoksa bile aynı mesaj (email enumeration engeller)
+    if not user:
+        return Response({"message": "If the email exists, a reset link was sent."}, status=status.HTTP_200_OK)
+
+    uid = urlsafe_base64_encode(force_bytes(user.pk))
+    token = token_generator.make_token(user)
+
+    frontend_url = getattr(settings, "FRONTEND_URL", "http://localhost:5173")
+    reset_link = f"{frontend_url}/reset-password/{uid}/{token}"
+
+    send_mail(
+        subject="Fitware - Reset your password",
+        message=(
+            f"Click this link to reset your password:\n\n{reset_link}\n\n"
+            "If you did not request this, ignore this email."
+        ),
+        from_email=getattr(settings, "DEFAULT_FROM_EMAIL", "no-reply@fitware.local"),
+        recipient_list=[email],
+        fail_silently=False,
+    )
+
+    return Response({"message": "If the email exists, a reset link was sent."}, status=status.HTTP_200_OK)
+
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def password_reset_confirm(request):
+    uidb64 = (request.data.get("uid") or "").strip()
+    token = (request.data.get("token") or "").strip()
+    new_password = request.data.get("new_password") or ""
+    repeat_password = request.data.get("repeat_password") or ""
+
+    if not uidb64 or not token:
+        return Response({"error": "Missing uid or token."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not new_password or not repeat_password:
+        return Response({"error": "New password fields are required."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if new_password != repeat_password:
+        return Response({"error": "Passwords do not match."}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except Exception:
+        return Response({"error": "Invalid reset link."}, status=status.HTTP_400_BAD_REQUEST)
+
+    if not token_generator.check_token(user, token):
+        return Response({"error": "Reset link is invalid or expired."}, status=status.HTTP_400_BAD_REQUEST)
+
+    user.set_password(new_password)
+    user.save(update_fields=["password"])
+
+    return Response({"message": "Password updated successfully."}, status=status.HTTP_200_OK)
 
 
 def _google_configured() -> bool:
@@ -309,4 +396,10 @@ urlpatterns = [
     # This gives you /api/auth/google/login/ and /api/auth/google/login/callback/
     path("api/auth/google/", include("allauth.socialaccount.providers.google.urls")),
     path('api/', include(router.urls)),
-] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    #resetpassowrd
+    path("api/v1/auth/password/reset/", password_reset_request, name="password_reset_request"),
+    path("api/v1/auth/password/reset/confirm/", password_reset_confirm, name="password_reset_confirm"),
+]
+
+# Serve media files in development
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

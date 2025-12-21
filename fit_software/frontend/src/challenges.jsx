@@ -17,6 +17,7 @@ export default function Challenges() {
   // details / progress modal
   const [modalType, setModalType] = useState(null); // 'details' | 'progress' | null
   const [selectedChallenge, setSelectedChallenge] = useState(null);
+  const [progressInput, setProgressInput] = useState("");
 
   // create challenge modal
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -25,9 +26,47 @@ export default function Challenges() {
   const [newBadge, setNewBadge] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [newTargetValue, setNewTargetValue] = useState("");
-  const [newUnit, setNewUnit] = useState("");
+  const [newUnit, setNewUnit] = useState("workouts");
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState("");
+  // goals.jsx ile aynı sözlük
+  const UNIT_LABELS = {
+    kg: "kg (Kilogram)",
+    lbs: "lbs (Pounds)",
+    km: "km (Kilometers)",
+    m: "meters",
+    miles: "miles",
+    min: "minutes",
+    hr: "hours",
+    laps: "laps",
+    sets: "sets",
+    reps: "reps",
+    cal: "calories",
+    fav: "% (Body Fat)",
+    workouts: "workouts",
+  };
+
+  // Challenge için backend'deki UNIT_CHOICES ile uyumlu olanlar
+  const CHALLENGE_UNITS = [
+  "kg",
+  "lbs",
+  "km",
+  "m",
+  "miles",
+  "min",
+  "hr",
+  "laps",
+  "sets",
+  "reps",
+  "cal",
+  "fav",
+  "workouts",
+];
+
+  const CHALLENGE_UNIT_OPTIONS = CHALLENGE_UNITS.map((u) => ({
+    value: u,
+    label: UNIT_LABELS[u] || u,
+  }));
 
   useEffect(() => {
     const token =
@@ -252,8 +291,11 @@ export default function Challenges() {
     setModalType("details");
   }
 
-  function openProgress(challenge) {
+    function openProgress(challenge) {
     setSelectedChallenge(challenge);
+    setProgressInput(
+      challenge.progress_value != null ? String(challenge.progress_value) : ""
+    );
     setModalType("progress");
   }
 
@@ -261,6 +303,51 @@ export default function Challenges() {
     setModalType(null);
     setSelectedChallenge(null);
   }
+
+  async function handleSaveProgress() {
+  if (!selectedChallenge) return;
+
+  const value = parseFloat(progressInput);
+  if (isNaN(value) || value < 0) {
+    alert("Lütfen geçerli bir sayı gir.");
+    return;
+  }
+
+  const token =
+    localStorage.getItem("access") || sessionStorage.getItem("access");
+  if (!token) {
+    navigate("/");
+    return;
+  }
+
+  const res = await fetch(
+    `${API_BASE}/api/challenges/${selectedChallenge.id}/update-progress/`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      credentials: "include",
+      body: JSON.stringify({ progress_value: value }),
+    }
+  );
+
+  if (!res.ok) {
+    alert("Progress güncellenirken hata oluştu");
+    return;
+  }
+
+  const updated = await res.json();
+
+  // listeyi güncelle
+  setChallenges((prev) =>
+    prev.map((c) => (c.id === updated.id ? updated : c))
+  );
+
+  // modal içindeki seçili challenge'ı güncelle
+  setSelectedChallenge(updated);
+}
 
   function openCreateModal() {
     setShowCreateModal(true);
@@ -412,6 +499,31 @@ export default function Challenges() {
                     </span>
                   </div>
 
+                {/* Kullanıcının kendi ilerlemesi (sadece joined ise) */}
+                {challenge.is_joined && challenge.target_value && (
+                  <div className="challenge-user-progress">
+                    <div className="challenge-user-progress-header">
+                      <span>Your progress</span>
+                      <span>
+                        {challenge.progress_value} / {challenge.target_value}{" "}
+                        {challenge.unit} (
+                        {Math.round(challenge.progress_percent || 0)}%)
+                      </span>
+                    </div>
+                    <div className="challenge-progress-bar">
+                      <div
+                        className="challenge-progress-fill"
+                        style={{
+                          width: `${Math.min(
+                            100,
+                            challenge.progress_percent || 0
+                          )}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                )}
+
                   <div className="challenge-actions">
                     {challenge.is_joined ? (
                       <>
@@ -422,7 +534,7 @@ export default function Challenges() {
                           View Progress
                         </button>
                         <button
-                          className="btn-join"
+                          className="btn-leave"
                           onClick={() => handleLeave(challenge.id)}
                         >
                           Leave
@@ -538,13 +650,21 @@ export default function Challenges() {
 
               <label className="form-label">
                 Unit
-                <input
-                  type="text"
-                  className="form-input"
+                <select
+                  className="form-select"
                   value={newUnit}
                   onChange={(e) => setNewUnit(e.target.value)}
-                  placeholder="km, workout, kg..."
-                />
+                  required
+                >
+                  <option value="" disabled>
+                    Birim seçin...
+                  </option>
+                  {CHALLENGE_UNIT_OPTIONS.map((u) => (
+                    <option key={u.value} value={u.value}>
+                      {u.label}
+                    </option>
+                  ))}
+                </select>
               </label>
 
               {createError && (
@@ -625,11 +745,11 @@ export default function Challenges() {
                 {selectedChallenge.is_joined ? (
                   <>
                     <p className="modal-description">
-                      Bu challenge&apos;a katıldın. Şu an için detaylı
-                      ilerleme verisi backendten sınırlı geliyor, ama katılım
-                      ve kalan günleri burada görebilirsin.
+                      Bu challenge&apos;a katıldın. İlerleme değerini buradan
+                      güncelleyebilir ve tüm katılımcıların durumunu görebilirsin.
                     </p>
 
+                    {/* Özet bilgi */}
                     <div className="progress-summary">
                       <div>
                         <span>Joined:</span> <strong>Yes</strong>
@@ -646,17 +766,96 @@ export default function Challenges() {
                             : "No deadline"}
                         </strong>
                       </div>
+                      <div>
+                        <span>Your progress:</span>{" "}
+                        <strong>
+                          {selectedChallenge.progress_value} /{" "}
+                          {selectedChallenge.target_value} {selectedChallenge.unit}
+                        </strong>
+                      </div>
+                    </div>
+
+                    {/* Progress bar */}
+                    <div className="challenge-progress-bar">
+                      <div
+                        className="challenge-progress-fill"
+                        style={{
+                          width: `${selectedChallenge.progress_percent || 0}%`,
+                        }}
+                      />
+                    </div>
+
+                    {/* Katılımcı listesi */}
+                    {Array.isArray(selectedChallenge.participants_detail) &&
+                      selectedChallenge.participants_detail.length > 0 && (
+                        <div className="participants-list">
+                          <h4>Participants progress</h4>
+                          <ul>
+                            {[...selectedChallenge.participants_detail]
+                              .sort(
+                                (a, b) =>
+                                  (b.progress_percent || 0) - (a.progress_percent || 0)
+                              )
+                              .map((p, index) => {
+                                const isMe = p.user_id === user?.id;
+
+                                return (
+                                  <li
+                                    key={p.id}
+                                    className={`participants-list-item ${
+                                      isMe ? "participant-me" : ""
+                                    }`}
+                                  >
+                                    <span className="participant-name">
+                                      #{index + 1} {p.display_name}
+                                      {isMe ? " (you)" : ""}
+                                    </span>
+                                    <span className="participant-progress">
+                                      {p.progress_value} / {selectedChallenge.target_value}{" "}
+                                      {selectedChallenge.unit} (
+                                      {Math.round(p.progress_percent || 0)}%)
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                          </ul>
+                        </div>
+                      )}
+
+
+                    {/* Senin inputun + buton zaten mevcut */}
+                    <div style={{ marginTop: "16px" }}>
+                      <label className="form-label">
+                        Update your progress
+                        <input
+                          type="number"
+                          className="form-input"
+                          value={progressInput}
+                          onChange={(e) => setProgressInput(e.target.value)}
+                          min="0"
+                          step="0.1"
+                        />
+                      </label>
+
+                      <button
+                        className="btn-primary"
+                        style={{ marginTop: "8px" }}
+                        onClick={handleSaveProgress}
+                      >
+                        Save Progress
+                      </button>
                     </div>
                   </>
                 ) : (
                   <p className="modal-description">
-                    Bu challenge&apos;a henüz katılmadın. İlerlemeyi
-                    görebilmek için önce &quot;Join Challenge&quot; butonuna
-                    tıklaman gerekiyor.
+                    Bu challenge&apos;a henüz katılmadın. İlerlemeyi görebilmek
+                    için önce &quot;Join Challenge&quot; butonuna tıklaman
+                    gerekiyor.
                   </p>
                 )}
               </>
-            )}
+)}
+
 
             <div className="modal-footer">
               {!selectedChallenge.is_joined &&

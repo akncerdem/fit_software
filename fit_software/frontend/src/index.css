@@ -184,7 +184,8 @@ body {
 .stat-card-content {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
+  gap: 16px;
 }
 
 .stat-title {
@@ -219,13 +220,15 @@ body {
 }
 
 .stat-icon {
-  width: 48px;
-  height: 48px;
+  width: 100px;
+  height: 100px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 48px;
+  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .stat-icon-blue {
@@ -248,6 +251,7 @@ body {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
   margin-bottom: 32px;
+  display: none;
 }
 
 .section-title {
@@ -295,6 +299,21 @@ body {
   background-color: #f9fafb;
 }
 
+/* Dashboard Row */
+.dashboard-row {
+  display: grid;
+  grid-template-columns: 40% 60%;
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+/* Left Column */
+.dashboard-left-column {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
 /* Goals Card */
 .goals-card {
   background-color: white;
@@ -302,32 +321,74 @@ body {
   padding: 24px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   border: 1px solid #e5e7eb;
+  width: 100%;
+}
+
+.goals-card[data-goals-count="0"],
+.goals-card[data-goals-count="1"] {
+  max-width: none;
+}
+
+.goals-card[data-goals-count="2"] {
+  max-width: none;
 }
 
 .goals-list {
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 16px;
+  max-height: 500px;
+  overflow-y: auto;
+}
+
+.empty-state-message {
+  padding: 40px 20px;
+  text-align: center;
+  color: #6b7280;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 8px;
+}
+
+.empty-state-message:hover {
+  background-color: #f3f4f6;
+  color: #2563eb;
+  font-weight: 500;
 }
 
 .goal-item {
   width: 100%;
 }
 
+.completed-goal {
+  opacity: 0.7;
+}
+
+.goals-divider {
+  font-size: 12px;
+  font-weight: 600;
+  color: #10b981;
+  text-transform: uppercase;
+  margin-top: 8px;
+  margin-bottom: 4px;
+}
+
 .goal-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .goal-name {
   color: #111827;
   font-weight: 500;
+  font-size: 14px;
 }
 
 .goal-progress {
-  font-size: 14px;
+  font-size: 13px;
   color: #6b7280;
 }
 
@@ -335,7 +396,7 @@ body {
   width: 100%;
   background-color: #e5e7eb;
   border-radius: 9999px;
-  height: 10px;
+  height: 8px;
   overflow: hidden;
 }
 
@@ -344,6 +405,48 @@ body {
   height: 100%;
   border-radius: 9999px;
   transition: width 0.5s ease;
+}
+
+.progress-bar-fill.completed-fill {
+  background-color: #10b981;
+}
+
+/* Quote Card */
+.quote-card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-height: 180px;
+}
+
+.quote-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+}
+
+.quote-text {
+  font-size: 16px;
+  font-weight: 500;
+  color: #111827;
+  line-height: 1.6;
+  margin: 0;
+  font-style: italic;
+}
+
+.quote-author {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0;
 }
 
 /* Responsive Design */
@@ -366,6 +469,14 @@ body {
     grid-template-columns: 1fr;
   }
 
+  .dashboard-row {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-left-column {
+    flex-direction: column;
+  }
+
   .quick-actions-buttons {
     flex-direction: column;
   }
@@ -374,4 +485,117 @@ body {
   .btn-secondary {
     width: 100%;
   }
+}
+
+/* Calendar Heatmap */
+.calendar-card {
+  background-color: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+  margin-bottom: 32px;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.calendar-container {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.calendar-month {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  text-align: center;
+}
+
+.calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 3px;
+}
+
+.calendar-day-header {
+  text-align: center;
+  font-weight: 600;
+  color: #6b7280;
+  font-size: 10px;
+  padding: 2px 0;
+}
+
+.calendar-day {
+  aspect-ratio: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid transparent;
+  min-width: 24px;
+}
+
+.calendar-day:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.calendar-day.empty {
+  background-color: transparent;
+  cursor: default;
+}
+
+.calendar-day.empty:hover {
+  transform: none;
+  box-shadow: none;
+}
+
+.heatmap-empty {
+  background-color: #f3f4f6;
+  color: #9ca3af;
+}
+
+.heatmap-low {
+  background-color: #bfdbfe;
+  color: #1e40af;
+}
+
+.heatmap-medium {
+  background-color: #60a5fa;
+  color: white;
+}
+
+.heatmap-high {
+  background-color: #2563eb;
+  color: white;
+}
+
+.calendar-legend {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: 10px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: #6b7280;
+}
+
+.legend-box {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid #d1d5db;
 }

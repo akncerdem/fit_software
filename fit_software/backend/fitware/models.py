@@ -27,13 +27,21 @@ class Profile(models.Model):
 
 # CHALLENGE
 class Challenge(models.Model):
-    # 🔹 YENİ: unit seçenekleri
     UNIT_CHOICES = [
         ("km", "Kilometer"),
+        ("m", "Meters"),
+        ("miles", "Miles"),
         ("workouts", "Workouts"),
         ("minutes", "Minutes"),
+        ("min", "Minutes (short)"),
+        ("hr", "Hours"),
+        ("sets", "Sets"),
         ("reps", "Repetitions"),
         ("kg", "Kilogram"),
+        ("lbs", "Pounds"),
+        ("laps", "Laps"),
+        ("cal", "Calories"),
+        ("fav", "Body Fat %"),
     ]
 
     title = models.CharField(max_length=200)
@@ -43,11 +51,9 @@ class Challenge(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True)
 
-    # zaten eklediğimiz alanlar
-    badge_name = models.CharField(max_length=100, blank=True)   # örn: "Marathon Starter Badge"
-    due_date = models.DateField(null=True, blank=True)          # challenge bitiş tarihi
+    badge_name = models.CharField(max_length=100, blank=True)
+    due_date = models.DateField(null=True, blank=True)
 
-    # 🔹 YENİ: hedef ve birim (progress için)
     target_value = models.FloatField(
         default=0,
         help_text="Target amount, e.g. 20 for 20km or 10 for 10 workouts",
@@ -57,6 +63,15 @@ class Challenge(models.Model):
         choices=UNIT_CHOICES,
         default="workouts",
         help_text="Unit of the challenge target",
+    )
+
+    # 🔹 ER diyagramındaki goal_id
+    goal = models.ForeignKey(
+        Goal,
+        on_delete=models.CASCADE,
+        related_name="challenges",
+        null=True,
+        blank=True,
     )
 
     def __str__(self):
@@ -69,12 +84,15 @@ class ChallengeJoined(models.Model):
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE)
     joined_at = models.DateTimeField(auto_now_add=True)
 
-    # 🔹 YENİ: kullanıcının ilerlemesi
+    # kullanıcının ilerlemesi
     progress_value = models.FloatField(
         default=0,
         help_text="User's current progress in challenge units",
     )
     updated_at = models.DateTimeField(auto_now=True)
+
+    # 🔹 YENİ: bu kullanıcı challenge’ı bitirmiş mi?
+    is_completed = models.BooleanField(default=False)
 
     class Meta:
         unique_together = ("user", "challenge")
