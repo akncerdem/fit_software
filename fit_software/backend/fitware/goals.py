@@ -119,10 +119,33 @@ class GoalSerializer(serializers.ModelSerializer):
 
 class GoalUpdateProgressSerializer(serializers.Serializer):
     current_value = serializers.FloatField(min_value=0)
-    
+
     def update(self, instance, validated_data):
-        instance.current_value = validated_data['current_value']
+        """
+        instance: Goal
+        - Goal.current_value güncellenir
+        - Bu goal'e bağlı challenge'lar için, goal sahibinin ChallengeJoined
+          kayıtları da aynı değere çekilir.
+        """
+        value = validated_data["current_value"]
+
+        # 1) Goal'ü güncelle
+        instance.current_value = value
         instance.save()
+
+        # 2) Bu goal'e bağlı tüm challenge'ları bul ve goal sahibinin join kaydını güncelle
+        try:
+            # Challenge.goal -> related_name="challenges" dedik
+            for ch in getattr(instance, "challenges", []).all():
+                cj = ch.challengejoined_set.filter(user=instance.user).first()
+                if cj:
+                    cj.progress_value = value
+                    if ch.target_value and value >= ch.target_value:
+                        cj.is_completed = True
+                    cj.save()
+        except Exception as e:
+            print("Sync challenge progress failed:", e)
+
         return instance
 
 # =============================================================================
