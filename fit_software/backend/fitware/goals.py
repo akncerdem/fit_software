@@ -159,6 +159,20 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
             BadgeService.award_goal_completion_badge(instance.user, instance)
         
         instance.save()
+
+        # 2) Bu goal'e bağlı tüm challenge'ları bul ve goal sahibinin join kaydını güncelle
+        try:
+            # Challenge.goal -> related_name="challenges" dedik
+            for ch in getattr(instance, "challenges", []).all():
+                cj = ch.challengejoined_set.filter(user=instance.user).first()
+                if cj:
+                    cj.progress_value = value
+                    if ch.target_value and value >= ch.target_value:
+                        cj.is_completed = True
+                    cj.save()
+        except Exception as e:
+            print("Sync challenge progress failed:", e)
+
         return instance
 
 
