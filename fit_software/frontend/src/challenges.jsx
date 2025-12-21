@@ -1,11 +1,13 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { api } from "./config";
 import "./challenges.css";
 import { API_BASE } from "./api";
 
 export default function Challenges() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("challenges");
   const [selectedTab, setSelectedTab] = useState("all"); // 'all' | 'my'
   const [challenges, setChallenges] = useState([]);
@@ -42,7 +44,20 @@ export default function Challenges() {
 
     // sayfa ilk açıldığında tüm challengelar
     loadChallenges("all");
+    fetchProfile();
   }, [navigate]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/profile/');
+      if (response.data) {
+        const profileData = Array.isArray(response.data) ? response.data[0] : response.data;
+        setProfile(profileData);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem("access");
@@ -285,7 +300,20 @@ export default function Challenges() {
         {user && (
           <div className="sidebar-footer">
             <div className="user-info">
-              <div className="user-avatar">👤</div>
+              <div className="user-avatar">
+                {profile?.profile_picture ? (
+                  <img 
+                    src={profile.profile_picture}
+                    alt="Profile" 
+                    className="sidebar-profile-picture"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  '👤'
+                )}
+              </div>
               <div>
                 <p className="user-name">
                   {user.first_name} {user.last_name}

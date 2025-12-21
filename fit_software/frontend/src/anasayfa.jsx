@@ -1,10 +1,12 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
+import { api } from "./config";
 import "./index.css";
 
 export default function Anasayfa() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
 
   useEffect(() => {
@@ -18,7 +20,22 @@ export default function Anasayfa() {
     if (userData) {
       setUser(JSON.parse(userData));
     }
+    
+    // Fetch profile data
+    fetchProfile();
   }, [navigate]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/profile/');
+      if (response.data) {
+        const profileData = Array.isArray(response.data) ? response.data[0] : response.data;
+        setProfile(profileData);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('access');
@@ -74,7 +91,18 @@ export default function Anasayfa() {
           <div className="sidebar-footer">
             <div className="user-info">
               <div className="user-avatar">
-                👤
+                {profile?.profile_picture ? (
+                  <img 
+                    src={profile.profile_picture}
+                    alt="Profile" 
+                    className="sidebar-profile-picture"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  '👤'
+                )}
               </div>
               <div>
                 <p className="user-name">
