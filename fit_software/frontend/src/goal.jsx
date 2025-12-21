@@ -243,7 +243,7 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
   const fetchData = async () => {
     try {
       setLoading(true); setError(null);
-      const goalsData = await goalsApi.getActive();
+      const goalsData = await goalsApi.getAll();
       setGoals(goalsData || []); 
 
       try {
@@ -396,7 +396,14 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
     try {
       const result = await goalsApi.updateProgress(selectedGoal.id, parsedValue);
       if (result.success) { 
-        fetchData(); setIsUpdateModalOpen(false); setSelectedGoal(null); 
+        fetchData();
+        // Check for new badges after goal update
+        try {
+          await api.post('/goals/check-badges/');
+        } catch (err) {
+          console.warn('Error checking badges:', err);
+        }
+        setIsUpdateModalOpen(false); setSelectedGoal(null); 
       }
     } catch (err) { console.error(err); alert('Failed to update.'); }
   };
@@ -433,8 +440,8 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
 
   // Stats
   const totalGoals = goals.length;
-  const completedGoals = goals.filter(g => (g.progress || 0) >= 100).length;
-  const activeGoalsCount = totalGoals - completedGoals;
+  const completedGoals = goals.filter(g => g.is_completed === true).length;
+  const activeGoalsCount = goals.filter(g => g.is_active && !g.is_completed).length;
   const totalProgressSum = goals.reduce((acc, curr) => acc + (curr.progress || 0), 0);
   const averageProgress = totalGoals > 0 ? Math.round(totalProgressSum / totalGoals) : 0;
   const nextMilestoneGoal = goals.filter(g => (g.progress || 0) < 100).sort((a, b) => (b.progress || 0) - (a.progress || 0))[0];

@@ -240,17 +240,13 @@ export default function Profile() {
   };
 
   const getBadgeIcon = (badgeType) => {
-    const iconMap = {
-      'Week Warrior': '🏆',
-      'Early Bird': '🔓',
-      'Consistency King': '💪',
-      'Push-up Pro': '💯',
-      'Fire Starter': '🔥',
-      'Strength Builder': '🏋️',
-      'Cardio Champion': '🏃',
-      'Rising Star': '⭐'
-    };
-    return iconMap[badgeType] || '🏅';
+    // Badge type already includes emoji (e.g., "🎯 Goal Crusher")
+    // Extract the emoji by taking characters until we hit a space
+    const spaceIndex = badgeType.indexOf(' ');
+    if (spaceIndex > 0) {
+      return badgeType.substring(0, spaceIndex);
+    }
+    return badgeType.charAt(0) || '🏅';
   };
 
   const formatBadgeDate = (dateString) => {
