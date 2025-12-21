@@ -214,6 +214,7 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [viewGoal, setViewGoal] = useState(null);
+  const [isCreating, setIsCreating] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
@@ -393,13 +394,16 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
 
   const handleCreateGoal = async (e) => {
     e.preventDefault();
+    if (isCreating) return; // Prevent double submission
     if (!newGoal.title || !newGoal.target_value) { alert('Fill required fields'); return; }
+    setIsCreating(true);
     try {
       await goalsApi.create(newGoal);
       setIsModalOpen(false);
       setNewGoal({ title: '', description: '', icon: '🎯', current_value: 0, target_value: '', unit: 'workouts' });
       fetchData();
     } catch (err) { console.error(err); alert('Failed to create.'); }
+    finally { setIsCreating(false); }
   };
 
   const handleLogout = () => { localStorage.removeItem('access'); localStorage.removeItem('refresh'); localStorage.removeItem('user'); navigate('/'); }
@@ -610,7 +614,7 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
                 <div className="form-group"><label className="form-label">Current</label><input type="number" step="1" className="form-input" value={newGoal.current_value} onChange={(e) => setNewGoal({...newGoal, current_value: parseFloat(e.target.value)||0})} /></div>
                 <div className="form-group"><label className="form-label">Target</label><input type="number" step="1" className="form-input" value={newGoal.target_value} onChange={(e) => setNewGoal({...newGoal, target_value: parseFloat(e.target.value)||''})} required /></div>
               </div>
-              <div className="modal-footer"><button type="button" className="btn-cancel" onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}>Cancel</button><button type="submit" className="btn-submit">Create</button></div>
+              <div className="modal-footer"><button type="button" className="btn-cancel" onClick={(e) => { e.stopPropagation(); setIsModalOpen(false); }}>Cancel</button><button type="submit" className="btn-submit" disabled={isCreating}>{isCreating ? 'Creating...' : 'Create'}</button></div>
             </form>
           </div>
         </div>

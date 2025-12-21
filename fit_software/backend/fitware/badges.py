@@ -4,6 +4,24 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Badge
 
 # =============================================================================
+# SERVICES
+# =============================================================================
+
+class BadgeService:
+    """Service for handling badge awarding logic"""
+    
+    @staticmethod
+    def award_goal_completion_badge(user, goal):
+        from .models import Badge
+        badge_type = f"Goal Completed: {goal.title}"
+        
+        # Check if user already has this badge
+        if not Badge.objects.filter(user=user, badge_type=badge_type).exists():
+            Badge.objects.create(user=user, badge_type=badge_type)
+            return True
+        return False
+
+# =============================================================================
 # SERIALIZERS
 # =============================================================================
 
@@ -12,7 +30,7 @@ class BadgeSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = Badge
-        fields = ['badge_type', 'awarded_at']
+        fields = ['id', 'badge_type', 'awarded_at']
         read_only_fields = ['awarded_at']
 
 # =============================================================================
