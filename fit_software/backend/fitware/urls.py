@@ -37,6 +37,9 @@ def health(request):
 @permission_classes([AllowAny])
 def login(request):
     try:
+        from django.utils import timezone
+        from .goals import ActivityLog
+        
         data = request.data
         email = data.get("email", "").strip().lower()
         password = data.get("password", "")
@@ -53,6 +56,17 @@ def login(request):
                 {"error": "Invalid email or password."},
                 status=status.HTTP_401_UNAUTHORIZED,
             )
+
+        # Log the login activity
+        try:
+            today = timezone.now().date()
+            ActivityLog.objects.get_or_create(
+                user=user, 
+                date=today, 
+                defaults={'action_type': 'login'}
+            )
+        except Exception as log_err:
+            logger.warning("Could not log activity: %s", log_err)
 
         refresh = RefreshToken.for_user(user)
 

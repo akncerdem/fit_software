@@ -152,7 +152,7 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
                 Profile.objects.create(user=instance.user, weight=weight_in_kg if instance.unit == 'kg' else instance.current_value * 0.453592)
         
         # Check if goal is completed
-        if not instance.is_completed and instance.is_goal_completed:
+        if not instance.is_completed and instance.is_completed:
             instance.is_completed = True
             # Award badge for goal completion
             from .badges import BadgeService
