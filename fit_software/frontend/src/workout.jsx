@@ -75,6 +75,19 @@ export default function Workout() {
   const [templateExerciseSearch, setTemplateExerciseSearch] = useState('');
   const [showTemplateExerciseDropdown, setShowTemplateExerciseDropdown] = useState(false);
 
+  // BAŞARI MODALI İÇİN STATE
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+
+//  SİLME ONAY STATEİ 
+  const [deleteModal, setDeleteModal] = useState({
+    isOpen: false,
+    type: null, // 'set', 'exercise', 'template'
+    id: null,
+    title: '',
+    message: ''
+  });
+
+
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
     if (!token) {
@@ -212,6 +225,69 @@ export default function Workout() {
       setSelectedWorkout(response.data);
     } catch (err) {
       console.error("Error deleting set:", err);
+    }
+  };
+
+//  VIEW WORKOUT SİLME FONKSİYONLARI 
+
+  // Silme İsteği (Modalı Açar)
+  const requestDelete = (type, id) => {
+    let title = "Are you sure?";
+    let message = "This action cannot be undone.";
+
+    if (type === 'set') {
+      title = "Delete Set?";
+      message = "Are you sure you want to delete this set?";
+    } else if (type === 'exercise') {
+      title = "Delete Exercise?";
+      message = "This will delete the exercise and all its sets.";
+    } else if (type === 'template') {
+      title = "Delete Template?";
+      message = "This template will be permanently removed.";
+    }
+
+    setDeleteModal({
+      isOpen: true,
+      type,
+      id,
+      title,
+      message
+    });
+  };
+
+  // Onay Verilince Çalışan Fonksiyon
+  const handleConfirmDelete = async () => {
+    const { type, id } = deleteModal;
+    setDeleteModal({ ...deleteModal, isOpen: false }); // Modalı kapat
+
+    try {
+      if (type === 'set') {
+        if (!selectedWorkout) return;
+        await api.delete(`workouts/sessions/${selectedWorkout.id}/delete_set/?set_id=${id}`);
+        // Listeyi yenile
+        const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
+        setSelectedWorkout(response.data);
+      } 
+      else if (type === 'exercise') {
+        if (!selectedWorkout) return;
+        await api.delete(`workouts/sessions/${selectedWorkout.id}/delete_exercise/?exercise_id=${id}`);
+        // Listeyi yenile
+        const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
+        setSelectedWorkout(response.data);
+        fetchWorkouts();
+        fetchStats();
+      }
+      else if (type === 'template') {
+        if (!selectedTemplate) return; // Template silerken selectedTemplate ID'sini kullanıyoruz
+        await api.delete(`workouts/templates/${id}/`); // ID parametreden geliyor
+        setShowTemplateDetailModal(false);
+        setSelectedTemplate(null);
+        fetchTemplates();
+        alert("Template deleted.");
+      }
+    } catch (err) {
+      console.error("Error deleting:", err);
+      alert("Deletion failed.");
     }
   };
 
@@ -651,7 +727,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
       setShowCompleteModal(false);
       fetchWorkouts();
       fetchStats();
-      alert("Workout completed! 🎉");
+      setShowSuccessModal(true);
     } catch (err) {
       console.error("Error completing workout:", err);
       alert("Could not complete workout.");
@@ -1066,24 +1142,27 @@ const handleApplyWorkoutAiSuggestion = async () => {
 
                   <input
                     type="number"
+                    min="0"
                     className="form-input input-small"
                     placeholder="Weight"
-                    value={newSet.weight_kg}
-                    onChange={(e) => setNewSet({...newSet, weight_kg: parseFloat(e.target.value) || 0})}
+                    value={newSet.weight_kg === 0 ? "" : newSet.weight_kg} // 0 ise boş görünsün
+                    onChange={(e) => setNewSet({...newSet, weight_kg: Math.max(0, parseFloat(e.target.value) || 0)})}
                   />
                   <input
                     type="number"
+                    min="0"
                     className="form-input input-small"
                     placeholder="Reps"
-                    value={newSet.reps}
-                    onChange={(e) => setNewSet({...newSet, reps: parseInt(e.target.value) || 0})}
+                    value={newSet.reps === 0 ? "" : newSet.reps}
+                    onChange={(e) => setNewSet({...newSet, reps: Math.max(0, parseInt(e.target.value) || 0)})}
                   />
                   <input
                     type="number"
+                    min="0"
                     className="form-input input-small"
                     placeholder="RPE"
-                    value={newSet.rpe}
-                    onChange={(e) => setNewSet({...newSet, rpe: parseInt(e.target.value) || 0})}
+                    value={newSet.rpe === 0 ? "" : newSet.rpe}
+                    onChange={(e) => setNewSet({...newSet, rpe: Math.max(0, parseInt(e.target.value) || 0)})}
                   />
                   <button className="btn-save-small" onClick={handleAddSet}>Add</button>
                   <button className="btn-cancel-small" onClick={() => setShowAddSetForm(false)}>Cancel</button>
@@ -1109,9 +1188,17 @@ const handleApplyWorkoutAiSuggestion = async () => {
                           <button className='btn-edit-small' onClick={() => startEditExercise(ex)}>Edit</button>
                         )}
                         {!selectedWorkout.is_completed && (
-                          <button className='btn-delete-small' onClick={() => handleDeleteExercise(ex.id)}>🗑️</button>
+                          <button className='btn-delete-small' onClick={() => requestDelete('exercise', ex.id)}>🗑️</button>
                         )}
                       </div>
+
+                      {/*  NOT GÖSTERİMİ  */}
+                      {ex.notes && (
+                      <div className="exercise-user-note">
+                      <span className="note-icon">📝</span>
+                      <span className="note-text">{ex.notes}</span>
+                       </div>
+                        )}
 
                       <div className="sets-list">
                         {ex.sets && ex.sets.length > 0 ? (
@@ -1130,24 +1217,27 @@ const handleApplyWorkoutAiSuggestion = async () => {
                                     <div className="edit-set-form">
                                       <input
                                         type="number"
+                                        min="0"
                                         className="form-input input-small"
                                         placeholder="Weight"
                                         value={editingSetData.weight_kg}
-                                        onChange={(e) => setEditingSetData({...editingSetData, weight_kg: parseFloat(e.target.value) || 0})}
+                                        onChange={(e) => setEditingSetData({...editingSetData, weight_kg: Math.max(0, parseFloat(e.target.value) || 0)})}
                                       />
                                       <input
                                         type="number"
+                                        min="0"
                                         className="form-input input-small"
                                         placeholder="Reps"
                                         value={editingSetData.reps}
-                                        onChange={(e) => setEditingSetData({...editingSetData, reps: parseInt(e.target.value) || 0})}
+                                        onChange={(e) => setEditingSetData({...editingSetData, reps: Math.max(0, parseInt(e.target.value) || 0)})}
                                       />
                                       <input
                                         type="number"
+                                        min="0"
                                         className="form-input input-small"
                                         placeholder="RPE"
                                         value={editingSetData.rpe}
-                                        onChange={(e) => setEditingSetData({...editingSetData, rpe: parseInt(e.target.value) || 0})}
+                                        onChange={(e) => setEditingSetData({...editingSetData, rpe: Math.max(0, parseInt(e.target.value) || 0)})}
                                       />
                                       <button className="btn-save-small" onClick={() => handleUpdateSet(s.id, editingSetData)}>Save</button>
                                       <button className="btn-cancel-small" onClick={() => setEditingSetId(null)}>Cancel</button>
@@ -1158,7 +1248,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
                                         setEditingSetId(s.id);
                                         setEditingSetData({ weight_kg: s.weight_kg, reps: s.reps, rpe: s.rpe });
                                       }}>&#x270F;&#xFE0F;</button>
-                                      <button className="btn-icon" onClick={() => handleDeleteSet(s.id)}>🗑️</button>
+                                      <button className="btn-icon" onClick={() => requestDelete('set', s.id)}>🗑️</button>
                                     </>
                                   )}
                                 </div>
@@ -1276,9 +1366,16 @@ const handleApplyWorkoutAiSuggestion = async () => {
               <label className="form-label">Duration (minutes)</label>
               <input 
                 type="number" 
+                min="0"
                 className="form-input"
-                value={completeForm.duration_minutes}
-                onChange={(e) => setCompleteForm({...completeForm, duration_minutes: parseInt(e.target.value) || 0})}
+                placeholder="e.g. 45"
+                /* Eğer değer 0 ise boş string göster (böylece placeholder görünür), değilse sayıyı göster */
+                value={completeForm.duration_minutes === 0 ? "" : completeForm.duration_minutes}
+                onChange={(e) => setCompleteForm({
+                ...completeForm, 
+                /* Eğer kutu boşaltılırsa 0 kaydet, yoksa girilen sayıyı kaydet */
+                duration_minutes: e.target.value === "" ? 0 : Math.max(0, parseInt(e.target.value))
+                })}
               />
             </div>
 
@@ -1727,9 +1824,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
             <div className="modal-actions">
               {!editingTemplate ? (
                 <>
-                  <button className="btn-delete" onClick={handleDeleteTemplate}>
-                    Delete
-                  </button>
+                  <button className="btn-delete" onClick={() => requestDelete('template', selectedTemplate.id)}>Delete</button>
                   <button className="btn-edit" onClick={startEditTemplate}>
                     Edit
                   </button>
@@ -1755,6 +1850,56 @@ const handleApplyWorkoutAiSuggestion = async () => {
         </div>
       )}
 
+{/* SİLME ONAY MODALI  */}
+      {deleteModal.isOpen && (
+        <div className="modal-overlay" style={{zIndex: 2000}}>
+          <div className="modal-content modal-small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-center">
+              <div className="warning-icon">⚠️</div>
+              <h3 className="modal-title">{deleteModal.title}</h3>
+            </div>
+            <p className="modal-message">{deleteModal.message}</p>
+            <div className="modal-actions centered">
+              <button 
+                className="btn-cancel" 
+                onClick={() => setDeleteModal({ ...deleteModal, isOpen: false })}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-delete-confirm" 
+                onClick={handleConfirmDelete}
+              >
+                Yes, Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- SUCCESS MODAL--- */}
+      {showSuccessModal && (
+        <div className="modal-overlay" style={{zIndex: 2000}}>
+          <div className="modal-content modal-small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-center">
+              <div className="success-icon">🏆</div>
+              <h3 className="modal-title">Great Job!</h3>
+            </div>
+            <p className="modal-message">
+              Workout completed successfully! <br/>
+              You are getting stronger every day.
+            </p>
+            <div className="modal-actions centered">
+              <button 
+                className="btn-success-confirm" 
+                onClick={() => setShowSuccessModal(false)}
+              >
+                Awesome!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
