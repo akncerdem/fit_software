@@ -27,11 +27,19 @@ class Profile(models.Model):
 # CHALLENGE
 class Challenge(models.Model):
     UNIT_CHOICES = [
-        ("km", "Kilometer"),
-        ("workouts", "Workouts"),
-        ("minutes", "Minutes"),
-        ("reps", "Repetitions"),
-        ("kg", "Kilogram"),
+        ('kg', 'kg'),
+        ('lbs', 'lbs'),
+        ('fav', 'Body Fat %'),
+        ('km', 'Kilometers'),
+        ('m', 'Meters'),
+        ('miles', 'Miles'),
+        ('laps', 'Laps'),
+        ('min', 'Minutes'),
+        ('hr', 'Hours'),
+        ('workouts', 'Workouts'),
+        ('sets', 'Sets'),
+        ('reps', 'Reps'),
+        ('cal', 'Calories'),
     ]
 
     title = models.CharField(max_length=200)
