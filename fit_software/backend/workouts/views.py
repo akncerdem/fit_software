@@ -339,6 +339,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         session = self.get_object()
+        was_completed = session.is_completed
         session.is_completed = True
         
         if 'duration_minutes' in request.data:
@@ -349,7 +350,44 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             session.notes = request.data['notes']
         
         session.save()
-        return Response(WorkoutSessionSerializer(session).data)
+        
+        # Log activity for completed workout and check for badges
+        new_badge = None
+        if not was_completed:
+            from django.utils import timezone
+            from django.conf import settings
+            import pytz
+            from fitware.goals import ActivityLog
+            from fitware.badges import BadgeService
+            from fitware.models import Badge
+            
+            local_tz = pytz.timezone(settings.TIME_ZONE)
+            today = timezone.now().astimezone(local_tz).date()
+            ActivityLog.objects.get_or_create(
+                user=request.user,
+                date=today,
+                defaults={'action_type': 'workout_completed'}
+            )
+            
+            # Get badges before check
+            badges_before = set(Badge.objects.filter(user=request.user).values_list('badge_type', flat=True))
+            
+            # Check and award badges
+            BadgeService.check_milestone_badges(request.user)
+            
+            # Get badges after check to find newly earned badge
+            badges_after = set(Badge.objects.filter(user=request.user).values_list('badge_type', flat=True))
+            new_badges = badges_after - badges_before
+            
+            if new_badges:
+                new_badge = list(new_badges)[0]  # Get the first new badge
+        
+        # Return response with session data and new badge info
+        response_data = WorkoutSessionSerializer(session).data
+        if new_badge:
+            response_data['new_badge'] = new_badge
+        
+        return Response(response_data)
 
     # --- UPDATED: Stats ---
     @action(detail=False, methods=['get'])

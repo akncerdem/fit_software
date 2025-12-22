@@ -29,7 +29,6 @@ export default function FitwareLogin() {
   // login fields
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
 
   // forgot fields
   const [forgotEmail, setForgotEmail] = useState("");
@@ -266,15 +265,6 @@ export default function FitwareLogin() {
                 </div>
 
                 <div className={styles.formRow}>
-                  <label className={styles.checkbox}>
-                    <input
-                      type="checkbox"
-                      checked={rememberMe}
-                      onChange={(event) => setRememberMe(event.target.checked)}
-                    />
-                    <span>Remember Me</span>
-                  </label>
-
                   <button
                     type="button"
                     className={styles.forgotLink}

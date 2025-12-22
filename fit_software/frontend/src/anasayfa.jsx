@@ -7,6 +7,7 @@ import "./index.css";
 export default function Anasayfa() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [goals, setGoals] = useState([]);
   const [activityLogs, setActivityLogs] = useState([]);
@@ -21,27 +22,81 @@ export default function Anasayfa() {
       return;
     }
     const userData = localStorage.getItem('user');
-    if (userData) setUser(JSON.parse(userData));
-    fetchData();
+    if (userData) {
+      setUser(JSON.parse(userData));
+    }
   }, [navigate]);
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [goalsData, logsData, badgesResp] = await Promise.all([
-        goalsApi.getActive(),
-        goalsApi.getLogs(),
-        api.get('/badges/')
-      ]);
-      setGoals(goalsData || []);
-      setActivityLogs(logsData || []);
-      setBadges(badgesResp.data || []);
-    } catch (err) {
-      setError('Failed to load dashboard data.');
-    } finally {
-      setLoading(false);
-    }
+  // Fetch goals
+  useEffect(() => {
+    const fetchGoals = async () => {
+      try {
+        const response = await api.get('/goals/');
+        setGoals(response.data || []);
+      } catch (error) {
+        console.error('Error fetching goals:', error);
+        setGoals([]);
+      }
+    };
+    fetchGoals();
+  }, []);
+
+  // Fetch badges and check for new ones
+  useEffect(() => {
+    const fetchBadges = async () => {
+      try {
+        // First, check and award any earned badges
+        await api.post('/goals/check-badges/');
+        // Then fetch all badges
+        const response = await api.get('/badges/');
+        setBadges(response.data || []);
+      } catch (error) {
+        console.error('Error fetching badges:', error);
+        setBadges([]);
+      }
+    };
+    fetchBadges();
+  }, []);
+
+  // Fetch activity logs
+  useEffect(() => {
+    const fetchActivityLogs = async () => {
+      try {
+        const response = await api.get('/goals/activity_logs/');
+        setActivityLogs(response.data || []);
+      } catch (error) {
+        console.error('Error fetching activity logs:', error);
+        setActivityLogs([]);
+      }
+    };
+    
+    const logVisitAndFetch = async () => {
+      try {
+        await api.post('/goals/log_visit/');
+        // Fetch logs after logging visit
+        await fetchActivityLogs();
+      } catch (error) {
+        console.error('Error logging visit:', error);
+        // Still fetch logs even if logging fails
+        await fetchActivityLogs();
+      }
+    };
+    
+    logVisitAndFetch();
+  }, []);
+
+  // Fetch profile picture
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const response = await api.get('/profile/');
+        setProfile(response.data);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        setProfile(null);
+      }
+    };
+    fetchProfile();
   }, []);
 
   const handleLogout = () => {
@@ -58,14 +113,20 @@ export default function Anasayfa() {
     const diffToMonday = today.getDate() - day + (day === 0 ? -6 : 1);
     const startOfWeek = new Date(today);
     startOfWeek.setDate(diffToMonday);
+    startOfWeek.setHours(0, 0, 0, 0);
     const endOfWeek = new Date(startOfWeek);
     endOfWeek.setDate(startOfWeek.getDate() + 6);
+    endOfWeek.setHours(23, 59, 59, 999);
     return [startOfWeek, endOfWeek];
   };
 
   const isDateInCurrentWeek = (dateStr) => {
     const [start, end] = getCurrentWeekRange();
     const d = new Date(dateStr);
+    // Set time to midnight for accurate date comparison
+    d.setHours(0, 0, 0, 0);
+    start.setHours(0, 0, 0, 0);
+    end.setHours(23, 59, 59, 999);
     return d >= start && d <= end;
   };
 
@@ -76,8 +137,8 @@ export default function Anasayfa() {
       const updatedDate = new Date(goal.updated_at);
       return isDateInCurrentWeek(updatedDate);
     });
-    // Count completed goals (progress >= 100) this week
-    const completedThisWeek = weekGoals.filter(g => g.progress >= 100).length;
+    // Count completed goals (is_completed = true) this week
+    const completedThisWeek = weekGoals.filter(g => g.is_completed === true).length;
     // Total = all goals worked on this week
     const total = weekGoals.length;
     return {
@@ -89,18 +150,30 @@ export default function Anasayfa() {
   // --- Login Streak ---
   const getLoginStreak = () => {
     // Use activityLogs, count consecutive days up to today
-    const days = new Set(activityLogs.map(log => {
-      const d = new Date(log.date);
-      d.setHours(0,0,0,0);
-      return d.getTime();
-    }));
-    let streak = 0;
-    let current = new Date();
-    current.setHours(0,0,0,0);
-    while (days.has(current.getTime())) {
-      streak++;
-      current.setDate(current.getDate() - 1);
+    if (!activityLogs || activityLogs.length === 0) {
+      return 0;
     }
+    
+    // Create a set of date strings for easier lookup
+    const daySet = new Set(activityLogs.map(log => log.date));
+    
+    // Count consecutive days from today
+    let streak = 0;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    let currentDate = new Date(today);
+    
+    while (true) {
+      const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
+      if (daySet.has(dateStr)) {
+        streak++;
+        currentDate.setDate(currentDate.getDate() - 1);
+      } else {
+        break;
+      }
+    }
+    
     return streak;
   };
 
@@ -199,7 +272,18 @@ export default function Anasayfa() {
           <div className="sidebar-footer">
             <div className="user-info">
               <div className="user-avatar">
-                👤
+                {profile?.profile_picture ? (
+                  <img 
+                    src={profile.profile_picture}
+                    alt="Profile" 
+                    className="sidebar-profile-picture"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  '👤'
+                )}
               </div>
               <div>
                 <p className="user-name">
@@ -214,7 +298,7 @@ export default function Anasayfa() {
               onClick={handleLogout}
               className="logout-btn"
             >
-              Çıkış Yap
+              Logout
             </button>
           </div>
         )}
@@ -269,7 +353,7 @@ export default function Anasayfa() {
                   {latestBadge ? (
                     <>
                       <p className="stat-value-badge">
-                        🏆 {latestBadge.badge_type}
+                        {latestBadge.badge_type}
                       </p>
                       <p className="stat-subtitle">
                         Earned {latestBadge.awarded_at ? new Date(latestBadge.awarded_at).toLocaleDateString() : ''}
@@ -388,7 +472,7 @@ export default function Anasayfa() {
               <h3 className="section-title">Activity Heatmap</h3>
               <div className="calendar-container">
                 <div className="calendar-month">
-                  {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                 </div>
                 <div className="calendar-grid">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (

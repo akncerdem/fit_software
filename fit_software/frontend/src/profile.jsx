@@ -1,6 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
-import { api } from "./config";
+import { api, API_BASE } from "./config";
 import "./profile.css";
 
 export default function Profile() {
@@ -9,6 +9,8 @@ export default function Profile() {
   const [activeTab, setActiveTab] = useState('profile');
   const [profile, setProfile] = useState(null);
   const [badges, setBadges] = useState([]);
+  const [workoutStats, setWorkoutStats] = useState(null);
+  const [activeGoalsCount, setActiveGoalsCount] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -16,7 +18,8 @@ export default function Profile() {
     height: '',
     weight: '',
     bio: '',
-    fitness_level: ''
+    fitness_level: '',
+    profile_picture: null
   });
   const [badgeFormData, setBadgeFormData] = useState({
     badge_type: ''
@@ -38,6 +41,8 @@ export default function Profile() {
 
     fetchProfile();
     fetchBadges();
+    fetchWorkoutStats();
+    fetchActiveGoalsCount();
   }, [navigate]);
 
   const fetchProfile = async () => {
@@ -71,6 +76,26 @@ export default function Profile() {
     }
   };
 
+  const fetchWorkoutStats = async () => {
+    try {
+      const response = await api.get('/workouts/sessions/stats/');
+      setWorkoutStats(response.data);
+    } catch (error) {
+      console.error('Error fetching workout stats:', error);
+      setWorkoutStats(null);
+    }
+  };
+
+  const fetchActiveGoalsCount = async () => {
+    try {
+      const response = await api.get('/goals/active/');
+      setActiveGoalsCount(response.data.length);
+    } catch (error) {
+      console.error('Error fetching active goals:', error);
+      setActiveGoalsCount(0);
+    }
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('access');
     localStorage.removeItem('refresh');
@@ -85,7 +110,8 @@ export default function Profile() {
         height: profile.height || '',
         weight: profile.weight || '',
         bio: profile.bio || '',
-        fitness_level: profile.fitness_level || ''
+        fitness_level: profile.fitness_level || '',
+        profile_picture: null // Don't pre-fill file input
       });
     } else {
       // Reset form for new profile
@@ -93,7 +119,8 @@ export default function Profile() {
         height: '',
         weight: '',
         bio: '',
-        fitness_level: ''
+        fitness_level: '',
+        profile_picture: null
       });
     }
     setError(null);
@@ -135,11 +162,18 @@ export default function Profile() {
   };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    const { name, value, type, files } = e.target;
+    if (type === 'file') {
+      setFormData(prev => ({
+        ...prev,
+        [name]: files[0] || null
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -148,20 +182,40 @@ export default function Profile() {
     setError(null);
 
     try {
-      const payload = {
-        height: formData.height ? parseFloat(formData.height) : null,
-        weight: formData.weight ? parseFloat(formData.weight) : null,
-        bio: formData.bio || '',
-        fitness_level: formData.fitness_level || ''
-      };
+      // Check if we have a file upload
+      const hasFile = formData.profile_picture instanceof File;
+
+      let payload;
+      let headers = {};
+
+      if (hasFile) {
+        // Use FormData for file uploads
+        payload = new FormData();
+        payload.append('height', formData.height ? parseFloat(formData.height) : '');
+        payload.append('weight', formData.weight ? parseFloat(formData.weight) : '');
+        payload.append('bio', formData.bio || '');
+        payload.append('fitness_level', formData.fitness_level || '');
+        if (formData.profile_picture) {
+          payload.append('profile_picture_upload', formData.profile_picture);
+        }
+        headers['Content-Type'] = 'multipart/form-data';
+      } else {
+        // Use regular JSON payload
+        payload = {
+          height: formData.height ? parseFloat(formData.height) : null,
+          weight: formData.weight ? parseFloat(formData.weight) : null,
+          bio: formData.bio || '',
+          fitness_level: formData.fitness_level || ''
+        };
+      }
 
       let response;
       if (profile && profile.id) {
         // Update existing profile
-        response = await api.put(`/profile/${profile.id}/`, payload);
+        response = await api.put(`/profile/${profile.id}/`, payload, hasFile ? { headers } : {});
       } else {
         // Create new profile
-        response = await api.post('/profile/', payload);
+        response = await api.post('/profile/', payload, hasFile ? { headers } : {});
       }
 
       setProfile(response.data);
@@ -186,17 +240,13 @@ export default function Profile() {
   };
 
   const getBadgeIcon = (badgeType) => {
-    const iconMap = {
-      'Week Warrior': '🏆',
-      'Early Bird': '🔓',
-      'Consistency King': '💪',
-      'Push-up Pro': '💯',
-      'Fire Starter': '🔥',
-      'Strength Builder': '🏋️',
-      'Cardio Champion': '🏃',
-      'Rising Star': '⭐'
-    };
-    return iconMap[badgeType] || '🏅';
+    // Badge type already includes emoji (e.g., "🎯 Goal Crusher")
+    // Extract the emoji by taking characters until we hit a space
+    const spaceIndex = badgeType.indexOf(' ');
+    if (spaceIndex > 0) {
+      return badgeType.substring(0, spaceIndex);
+    }
+    return badgeType.charAt(0) || '🏅';
   };
 
   const formatBadgeDate = (dateString) => {
@@ -268,7 +318,20 @@ export default function Profile() {
         {user && (
           <div className="sidebar-footer">
             <div className="user-info">
-              <div className="user-avatar">👤</div>
+              <div className="user-avatar">
+                {profile?.profile_picture ? (
+                  <img 
+                    src={profile.profile_picture}
+                    alt="Profile" 
+                    className="sidebar-profile-picture"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  '👤'
+                )}
+              </div>
               <div>
                 <p className="user-name">
                   {user.first_name} {user.last_name}
@@ -277,7 +340,7 @@ export default function Profile() {
               </div>
             </div>
             <button onClick={handleLogout} className="logout-btn">
-              Çıkış Yap
+              Logout
             </button>
           </div>
         )}
@@ -291,7 +354,18 @@ export default function Profile() {
             <div className="profile-left">
               <div className="profile-card">
                 <div className="profile-avatar-large">
-                  {user ? getInitials(user.first_name, user.last_name) : 'AM'}
+                  {profile?.profile_picture ? (
+                    <img 
+                      src={profile.profile_picture}
+                      alt="Profile" 
+                      className="profile-picture"
+                      onError={(e) => {
+                        e.target.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    user ? getInitials(user.first_name, user.last_name) : 'AM'
+                  )}
                 </div>
                 <h2 className="profile-name">
                   {user ? `${user.first_name} ${user.last_name}` : profileData.name}
@@ -333,7 +407,7 @@ export default function Profile() {
                 <div className="stats-grid">
                   <div className="stat-item">
                     <div className="stat-icon">💪</div>
-                    <div className="stat-value">{profileData.stats.totalWorkouts}</div>
+                    <div className="stat-value">{workoutStats ? workoutStats.total_workouts : 0}</div>
                     <div className="stat-label">Total Workouts</div>
                   </div>
                   <div className="stat-item">
@@ -343,7 +417,7 @@ export default function Profile() {
                   </div>
                   <div className="stat-item">
                     <div className="stat-icon">🎯</div>
-                    <div className="stat-value">{profileData.stats.activeGoals}</div>
+                    <div className="stat-value">{activeGoalsCount}</div>
                     <div className="stat-label">Active Goals</div>
                   </div>
                 </div>
@@ -406,6 +480,22 @@ export default function Profile() {
                   {error}
                 </div>
               )}
+
+              <div className="form-group">
+                <label htmlFor="profile_picture">Profile Picture</label>
+                <input
+                  type="file"
+                  id="profile_picture"
+                  name="profile_picture"
+                  onChange={handleInputChange}
+                  accept="image/*"
+                />
+                {profile?.profile_picture && (
+                  <div className="current-image">
+                    <small>Current image: {profile.profile_picture.split('/').pop()}</small>
+                  </div>
+                )}
+              </div>
 
               <div className="form-group">
                 <label htmlFor="height">Height (cm)</label>

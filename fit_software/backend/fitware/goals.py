@@ -1,4 +1,5 @@
 from django.db import models
+from django.conf import settings
 from django.contrib.auth.models import User
 from rest_framework import serializers, viewsets, status
 from rest_framework.decorators import action
@@ -10,6 +11,7 @@ import re
 import os
 import json
 import requests
+import pytz
 
 # =============================================================================
 # MODELS
@@ -18,11 +20,13 @@ import requests
 class ActivityLog(models.Model):
     """Kullanıcının hangi gün işlem yaptığını tutan tablo"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
-    action_type = models.CharField(max_length=50)  # 'create', 'update'
-    date = models.DateField(default=timezone.now)
+    action_type = models.CharField(max_length=50)  # 'create_goal', 'update_progress', 'visit', 'goal_completed'
+    date = models.DateField(auto_now_add=False)  # Set manually with correct timezone
 
     class Meta:
         ordering = ['-date']
+        # Aynı kullanıcı, aynı gün, aynı action_type için tek kayıt
+        unique_together = ('user', 'date', 'action_type')
 
 
 class Goal(models.Model):
@@ -150,29 +154,38 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
 
             try:
                 profile = Profile.objects.get(user=instance.user)
-                profile.weight = weight_in_kg
-                profile.save()
+                # Only update if user has already set their weight/height
+                if profile.weight and profile.height:
+                    # Convert lbs to kg if needed
+                    weight_in_kg = instance.current_value
+                    if instance.unit == 'lbs':
+                        weight_in_kg = instance.current_value * 0.453592  # lbs to kg conversion
+                    
+                    profile.weight = weight_in_kg
+                    profile.save()
             except Profile.DoesNotExist:
-                Profile.objects.create(user=instance.user, weight=weight_in_kg)
-
-        # 2) Hedef tamamlandı mı?
-        if instance.target_value is not None:
-            # artan hedef (örn. 0 -> 50 km)
-            if instance.start_value <= instance.target_value:
-                instance.is_completed = value >= instance.target_value
-            # azalan hedef (örn. 90 kg -> 80 kg)
-            else:
-                instance.is_completed = value <= instance.target_value
-
+                # Profile doesn't exist yet, skip weight update
+                pass
+        
+        # Check if goal is completed
+        if not instance.is_completed and instance.current_value >= instance.target_value:
+            instance.is_completed = True
+            # Award badge for milestone achievements
+            from .badges import BadgeService
+            BadgeService.check_milestone_badges(instance.user)
+            
+            # Log activity for completed goal
+            local_tz = pytz.timezone(settings.TIME_ZONE)
+            today = timezone.now().astimezone(local_tz).date()
+            ActivityLog.objects.get_or_create(
+                user=instance.user,
+                date=today,
+                defaults={'action_type': 'goal_completed'}
+            )
+        
         instance.save()
 
-        # 3) İlk kez tamamlandıysa rozet ver
-        if not old_completed and instance.is_completed:
-            from .badges import BadgeService
-            BadgeService.award_goal_completion_badge(instance.user, instance)
-
-        # 4) Bu goal ile ilişkili / eşleşen tüm challengelardaki
-        #    aynı kullanıcının progress'ini güncelle
+        # 2) Bu goal'e bağlı tüm challenge'ları bul ve goal sahibinin join kaydını güncelle
         try:
             from .models import Challenge, ChallengeJoined
 
@@ -227,9 +240,14 @@ class GoalViewSet(viewsets.ModelViewSet):
     def _log_activity(self, action_type):
         try:
             user = self.request.user if self.request.user.is_authenticated else User.objects.first()
-            today = timezone.now().date()
-            if not ActivityLog.objects.filter(user=user, date=today).exists():
-                ActivityLog.objects.create(user=user, action_type=action_type, date=today)
+            local_tz = pytz.timezone(settings.TIME_ZONE)
+            today = timezone.now().astimezone(local_tz).date()
+            # Aynı kullanıcı, aynı gün, aynı action_type için tek kayıt (get_or_create)
+            ActivityLog.objects.get_or_create(
+                user=user,
+                date=today,
+                action_type=action_type
+            )
         except Exception as e:
             print(f"Log Error: {e}")  # Log hatası olsa bile sistemi durdurma
 
@@ -252,8 +270,31 @@ class GoalViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def active(self, request):
-        active_goals = self.get_queryset().filter(is_active=True)
+        active_goals = self.get_queryset().filter(is_active=True, is_completed=False)
         return Response(self.get_serializer(active_goals, many=True).data)
+
+    @action(detail=False, methods=['post'])
+    def log_visit(self, request):
+        """Log user's daily visit for streak tracking"""
+        try:
+            user = request.user if request.user.is_authenticated else User.objects.first()
+            # Convert UTC to local timezone
+            from django.conf import settings
+            local_tz = pytz.timezone(settings.TIME_ZONE)
+            today = timezone.now().astimezone(local_tz).date()
+            # Create activity log for today if it doesn't exist
+            activity_log, created = ActivityLog.objects.get_or_create(
+                user=user,
+                date=today,
+                defaults={'action_type': 'visit'}
+            )
+            return Response({
+                'success': True,
+                'message': 'Visit logged' if created else 'Already logged today',
+                'date': str(today)
+            })
+        except Exception as e:
+            return Response({'success': False, 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['get'])
     def activity_logs(self, request):
@@ -261,7 +302,7 @@ class GoalViewSet(viewsets.ModelViewSet):
         try:
             user = request.user if request.user.is_authenticated else User.objects.first()
             start_date = timezone.now().date() - datetime.timedelta(days=35)
-            logs = ActivityLog.objects.filter(user=user, date__gte=start_date)
+            logs = ActivityLog.objects.filter(user=user, date__gte=start_date).order_by('-date')
             return Response(ActivityLogSerializer(logs, many=True).data)
         except Exception:
             return Response([])  # Hata olursa boş liste dön
@@ -448,3 +489,22 @@ class GoalViewSet(viewsets.ModelViewSet):
                 "timeline_days": timeline_days
             }
         }, status=status.HTTP_200_OK)
+    
+    @action(detail=False, methods=['post'], url_path='check-badges')
+    def check_badges(self, request):
+        """Check and award badges for the current user"""
+        from .badges import BadgeService, BadgeSerializer
+        from .models import Badge
+        try:
+            BadgeService.check_milestone_badges(request.user)
+            badges = Badge.objects.filter(user=request.user).order_by('-awarded_at')
+            return Response({
+                'success': True,
+                'message': 'Badges checked and awarded',
+                'badges': BadgeSerializer(badges, many=True).data
+            })
+        except Exception as e:
+            return Response({
+                'success': False,
+                'error': str(e)
+            }, status=status.HTTP_400_BAD_REQUEST)
