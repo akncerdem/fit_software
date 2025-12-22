@@ -134,7 +134,8 @@ class ChallengeProgressSerializer(serializers.Serializer):
         """
         instance: ChallengeJoined
         - Kullanıcının challenge içindeki ilerlemesini günceller
-        - Aynı kullanıcıya ait eşleşen Goal kaydını da senkronize eder
+        - Eğer bu kullanıcı challenge'ı oluşturan kişi ise
+          bağlı Goal.current_value değerini de senkronize eder.
         """
         value = validated_data["progress_value"]
         challenge = instance.challenge
@@ -142,32 +143,18 @@ class ChallengeProgressSerializer(serializers.Serializer):
         # 1) ChallengeJoined'i güncelle
         instance.progress_value = value
 
-        # yüzde hesabı
-        if challenge.target_value:
-            percent = min(100, (value / challenge.target_value) * 100)
-        else:
-            percent = 0
-
-        if challenge.target_value and value >= challenge.target_value:
-            instance.is_completed = True
-        else:
-            instance.is_completed = False
-
-        instance.save()
-
-        # 2) Aynı kullanıcı için, challenge ile uyumlu Goal'u bul
-        goal = (
-            Goal.objects.filter(
-                user=instance.user,
-                title=challenge.title,
-                target_value=challenge.target_value,
-                unit=challenge.unit,
-            )
-            .order_by("-created_at")
-            .first()
+        # hedefe ulaştı mı?
+        instance.is_completed = bool(
+            challenge.target_value and value >= challenge.target_value
         )
 
-        if goal:
+        # DİKKAT: progress_percent artık modelde @property ise
+        # burada asla set ETMİYORUZ.
+        instance.save()
+
+        # 2) Bağlı goal varsa ve goal aynı kullanıcıya aitse goal'u da güncelle
+        goal = getattr(challenge, "goal", None)
+        if goal and goal.user_id == instance.user_id:
             goal.current_value = value
             if challenge.target_value and value >= challenge.target_value:
                 goal.is_completed = True

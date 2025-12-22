@@ -132,70 +132,75 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
     current_value = serializers.FloatField(min_value=0)
 
     def update(self, instance, validated_data):
-        """
-        Goal.current_value güncellenince:
-        - Kilo hedeflerinde Profile.weight'i günceller
-        - Hedefe ilk defa ulaştıysa badge verir
-        - Bu goal'e bağlı challenge'larda, aynı kullanıcıya ait
-          ChallengeJoined.progress_value değerini senkronize eder
-        """
-
-        # Yeni değeri al
+        # instance: Goal
         value = validated_data["current_value"]
         old_completed = instance.is_completed
 
-        # 1) Goal current_value güncelle
         instance.current_value = value
 
-        # 2) Kilo hedefleri için Profile.weight senkronu
+        # 1) Kilo hedefleri için profil ağırlığını güncelle
         if instance.unit in ["kg", "lbs"]:
-            from .models import Profile  # import'u fonksiyon içinde tut
+            from .models import Profile
 
-            # lbs ise kg'a çevir
-            weight_in_kg = value if instance.unit == "kg" else value * 0.453592
+            # lbs ise kg'ye çevir
+            if instance.unit == "kg":
+                weight_in_kg = value
+            else:
+                weight_in_kg = value * 0.453592
 
-            profile, created = Profile.objects.get_or_create(
-                user=instance.user,
-                defaults={"weight": weight_in_kg},
-            )
-            if not created:
+            try:
+                profile = Profile.objects.get(user=instance.user)
                 profile.weight = weight_in_kg
                 profile.save()
+            except Profile.DoesNotExist:
+                Profile.objects.create(user=instance.user, weight=weight_in_kg)
 
-        # 3) Goal tamamlandı mı?
-        just_completed = False
-        # target_value varsa ve daha önce completed değildiyse
-        if not old_completed and instance.target_value is not None:
-            if value >= instance.target_value:
-                instance.is_completed = True
-                just_completed = True
+        # 2) Hedef tamamlandı mı?
+        if instance.target_value is not None:
+            # artan hedef (örn. 0 -> 50 km)
+            if instance.start_value <= instance.target_value:
+                instance.is_completed = value >= instance.target_value
+            # azalan hedef (örn. 90 kg -> 80 kg)
+            else:
+                instance.is_completed = value <= instance.target_value
 
         instance.save()
 
-        # 4) İlk defa tamamlandıysa badge ver
-        if just_completed:
+        # 3) İlk kez tamamlandıysa rozet ver
+        if not old_completed and instance.is_completed:
             from .badges import BadgeService
             BadgeService.award_goal_completion_badge(instance.user, instance)
 
-        # 5) Bu goal'e bağlı challenge'ları bul ve join kaydını güncelle
+        # 4) Bu goal ile ilişkili / eşleşen tüm challengelardaki
+        #    aynı kullanıcının progress'ini güncelle
         try:
             from .models import Challenge, ChallengeJoined
 
-            challenges = Challenge.objects.filter(goal=instance)
+            user = instance.user
 
-            for ch in challenges:
-                cj, _ = ChallengeJoined.objects.get_or_create(
-                    user=instance.user,
-                    challenge=ch,
-                )
+            # 4.a) FK ile gerçekten bu goal'e bağlı olan challengelar
+            qs_fk = Challenge.objects.filter(goal=instance)
+
+            # 4.b) Her ihtimale karşı, aynı title + unit + target_value olanlar
+            qs_match = Challenge.objects.filter(
+                title=instance.title,
+                unit=instance.unit,
+                target_value=instance.target_value,
+            )
+
+            # İki queryset'i birleştir, tekrarları önlemek için distinct
+            qs_all = (qs_fk | qs_match).distinct()
+
+            for ch in qs_all:
+                cj = ChallengeJoined.objects.filter(user=user, challenge=ch).first()
+                if not cj:
+                    continue
+
                 cj.progress_value = value
-
-                if ch.target_value and value >= ch.target_value:
-                    cj.is_completed = True
-                else:
-                    cj.is_completed = False
-
+                if ch.target_value:
+                    cj.is_completed = value >= ch.target_value
                 cj.save()
+
         except Exception as e:
             print("Sync challenge progress failed:", e)
 
