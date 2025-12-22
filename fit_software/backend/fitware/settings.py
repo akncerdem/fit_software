@@ -128,7 +128,7 @@ else:
     DATABASES = {
         'default': dj_database_url.config(
             # Replace this string with the one you copied from Neon
-            default='postgresql://neondb_owner:npg_NtHduUS6w2LD@ep-billowing-brook-ahh4cpxc-pooler.c-3.us-east-1.aws.neon.tech/Db?sslmode=require&channel_binding=require',
+            default='',
             conn_max_age=600
         )
     }
