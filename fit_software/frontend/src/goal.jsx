@@ -55,39 +55,111 @@ const normalizeUnit = (u) => {
 };
 
 const resolveGoalIcon = (alt) => {
-  // 1) direct icon match
+  // 1) direct icon match - AI'dan gelen emoji direkt GOAL_TYPES'da varsa
   if (alt?.icon && GOAL_TYPES[alt.icon]) return alt.icon;
 
-  // 2) match by label
+  // 2) match by label (exact match)
   const t = String(alt?.type || "").trim().toLowerCase();
-  if (!t) return null;
 
-  const exact = Object.entries(GOAL_TYPES).find(
-    ([, v]) => v.label.toLowerCase() === t
-  );
-  if (exact) return exact[0];
-
-  // 3) synonyms
-  const synonyms = {
-    "lose weight": "📉",
-    "weightloss": "📉",
-    "gain weight": "📈",
-    "running": "🏃",
-    "run": "🏃",
-    "swimming": "🏊",
-    "cycle": "🚲",
-    "cycling": "🚲",
-    "workout": "💪",
-    "strength": "💪",
-    "body fat": "⚖️",
-    "cardio": "🔥",
-  };
-
-  for (const [key, icon] of Object.entries(synonyms)) {
-    if (t.includes(key) && GOAL_TYPES[icon]) return icon;
+  if (t) {
+    const exact = Object.entries(GOAL_TYPES).find(
+      ([, v]) => v.label.toLowerCase() === t
+    );
+    if (exact) return exact[0];
   }
 
-  return null;
+  // 3) synonyms - partial match için genişletilmiş liste
+  const synonyms = {
+    // Weight related
+    "lose weight": "📉",
+    "weight loss": "📉",
+    "weightloss": "📉",
+    "slim": "📉",
+    "diet": "📉",
+    "fat loss": "📉",
+    "lose": "📉",
+    "gain weight": "📈",
+    "weight gain": "📈",
+    "bulk": "📈",
+    "muscle gain": "📈",
+    "gain": "📈",
+    // Running
+    "running": "🏃",
+    "run": "🏃",
+    "jog": "🏃",
+    "jogging": "🏃",
+    "sprint": "🏃",
+    "5k": "🏃",
+    "10k": "🏃",
+    "marathon": "🏃",
+    // Swimming
+    "swimming": "🏊",
+    "swim": "🏊",
+    "pool": "🏊",
+    // Cycling
+    "cycle": "🚲",
+    "cycling": "🚲",
+    "bike": "🚲",
+    "biking": "🚲",
+    "bicycle": "🚲",
+    // Workout / Strength
+    "workout": "💪",
+    "strength": "💪",
+    "gym": "💪",
+    "lift": "💪",
+    "lifting": "💪",
+    "exercise": "💪",
+    "training": "💪",
+    "fitness": "💪",
+    // Body fat
+    "body fat": "⚖️",
+    "bodyfat": "⚖️",
+    "fat percentage": "⚖️",
+    // Cardio
+    "cardio": "🔥",
+    "calorie": "🔥",
+    "calories": "🔥",
+    "burn": "🔥",
+    "hiit": "🔥",
+  };
+
+  // Check type string for synonyms
+  if (t) {
+    for (const [key, icon] of Object.entries(synonyms)) {
+      if (t.includes(key) && GOAL_TYPES[icon]) return icon;
+    }
+  }
+
+  // 4) Eğer AI'dan gelen icon GOAL_TYPES'da yoksa ama benzer bir icon bulabiliriz
+  // AI'dan gelen icon'a göre en yakın GOAL_TYPES icon'ını bul
+  const iconMap = {
+    "🏋️": "💪", // weight lifting -> workout
+    "🏋": "💪",
+    "🏋️‍♂️": "💪",
+    "🏋️‍♀️": "💪",
+    "🏃‍♂️": "🏃",
+    "🏃‍♀️": "🏃",
+    "🚴": "🚲",
+    "🚴‍♂️": "🚲",
+    "🚴‍♀️": "🚲",
+    "🏊‍♂️": "🏊",
+    "🏊‍♀️": "🏊",
+    "⬇️": "📉",
+    "⬆️": "📈",
+    "🔻": "📉",
+    "🔺": "📈",
+    "❤️": "🔥",
+    "💓": "🔥",
+    "🫀": "🔥",
+  };
+
+  if (alt?.icon && iconMap[alt.icon] && GOAL_TYPES[iconMap[alt.icon]]) {
+    return iconMap[alt.icon];
+  }
+
+  // 5) Fallback: Eğer hiçbir şey bulunamazsa, varsayılan bir icon döndür
+  // Bu sayede form her zaman doldurulabilir
+  return "💪"; // Default workout icon
 };
 
 
@@ -158,19 +230,8 @@ const handleApplySuggestion = () => {
 
   const alt = aiSuggestion.alternative;
 
-  // 1) Type resolve (must match your dropdown types)
+  // 1) Type resolve - artık her zaman bir icon dönecek (fallback var)
   const icon = resolveGoalIcon(alt);
-
-  if (!icon) {
-    // Type is not supported -> show Unknown goal message and don't modify form
-    setAiSuggestion({
-      recognized: false,
-      message: "Unknown goal. Please provide a clear description of your fitness goal.",
-      alternative: null,
-    });
-    setAiOpen(true);
-    return;
-  }
 
   // 2) Unit resolve
   const allowedUnits = GOAL_TYPES[icon]?.units || [];
@@ -180,16 +241,25 @@ const handleApplySuggestion = () => {
       ? normalizedAltUnit
       : (allowedUnits[0] || newGoal.unit);
 
-  // 3) Apply into form (Type + Unit + Target)
+  // 3) Target value - sayıya çevir, geçersizse varsayılan kullan
+  let targetValue = parseFloat(alt.target_value);
+  if (isNaN(targetValue) || targetValue <= 0) {
+    targetValue = 30; // varsayılan değer
+  }
+
+  // 4) Apply into form (Type + Unit + Target)
   setNewGoal((prev) => ({
     ...prev,
     icon,
     unit,
-    target_value: alt.target_value ?? prev.target_value,
+    target_value: targetValue,
     description: prev.description
       ? prev.description
       : (alt.timeline_days ? `Timeline: ${alt.timeline_days} days` : prev.description),
   }));
+
+  // Başarılı uygulandığını göster (opsiyonel - AI panel'i kapatabilirsin)
+  // setAiOpen(false);
 };
 
 
@@ -324,12 +394,17 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
   };
 
   // Activity log günlerini hızlı eşleştirmek için Set'e çevir
+  // Sadece goal oluşturma/güncelleme loglarını dikkate al (visit hariç)
+  const goalActivityTypes = ['create_goal', 'update_progress', 'goal_completed'];
   const activityDateSet = useMemo(() => {
     const set = new Set();
     if (Array.isArray(activityLogs)) {
       activityLogs.forEach((log) => {
-        const key = normalizeLogDateKey(log);
-        if (key) set.add(key);
+        // Sadece goal ile ilgili action_type'ları dikkate al
+        if (log.action_type && goalActivityTypes.includes(log.action_type)) {
+          const key = normalizeLogDateKey(log);
+          if (key) set.add(key);
+        }
       });
     }
     return set;
