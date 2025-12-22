@@ -136,12 +136,22 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
     current_value = serializers.FloatField(min_value=0)
 
     def update(self, instance, validated_data):
-        old_current_value = instance.current_value
-        instance.current_value = validated_data['current_value']
-        
-        # Update profile weight for weight-related goals
-        if instance.unit in ['kg', 'lbs']:
+        # instance: Goal
+        value = validated_data["current_value"]
+        old_completed = instance.is_completed
+
+        instance.current_value = value
+
+        # 1) Kilo hedefleri için profil ağırlığını güncelle
+        if instance.unit in ["kg", "lbs"]:
             from .models import Profile
+
+            # lbs ise kg'ye çevir
+            if instance.unit == "kg":
+                weight_in_kg = value
+            else:
+                weight_in_kg = value * 0.453592
+
             try:
                 profile = Profile.objects.get(user=instance.user)
                 # Only update if user has already set their weight/height
@@ -170,21 +180,40 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
             ActivityLog.objects.get_or_create(
                 user=instance.user,
                 date=today,
-                defaults={'action_type': 'goal_completed'}
+                action_type='goal_completed'
             )
         
         instance.save()
 
         # 2) Bu goal'e bağlı tüm challenge'ları bul ve goal sahibinin join kaydını güncelle
         try:
-            # Challenge.goal -> related_name="challenges" dedik
-            for ch in getattr(instance, "challenges", []).all():
-                cj = ch.challengejoined_set.filter(user=instance.user).first()
-                if cj:
-                    cj.progress_value = validated_data['current_value']
-                    if ch.target_value and validated_data['current_value'] >= ch.target_value:
-                        cj.is_completed = True
-                    cj.save()
+            from .models import Challenge, ChallengeJoined
+
+            user = instance.user
+
+            # 4.a) FK ile gerçekten bu goal'e bağlı olan challengelar
+            qs_fk = Challenge.objects.filter(goal=instance)
+
+            # 4.b) Her ihtimale karşı, aynı title + unit + target_value olanlar
+            qs_match = Challenge.objects.filter(
+                title=instance.title,
+                unit=instance.unit,
+                target_value=instance.target_value,
+            )
+
+            # İki queryset'i birleştir, tekrarları önlemek için distinct
+            qs_all = (qs_fk | qs_match).distinct()
+
+            for ch in qs_all:
+                cj = ChallengeJoined.objects.filter(user=user, challenge=ch).first()
+                if not cj:
+                    continue
+
+                cj.progress_value = value
+                if ch.target_value:
+                    cj.is_completed = value >= ch.target_value
+                cj.save()
+
         except Exception as e:
             print("Sync challenge progress failed:", e)
 
@@ -257,7 +286,7 @@ class GoalViewSet(viewsets.ModelViewSet):
             activity_log, created = ActivityLog.objects.get_or_create(
                 user=user,
                 date=today,
-                defaults={'action_type': 'visit'}
+                action_type='visit'
             )
             return Response({
                 'success': True,
