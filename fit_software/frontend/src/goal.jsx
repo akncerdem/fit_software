@@ -122,6 +122,7 @@ export default function Goal() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('goal');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Data State
   const [goals, setGoals] = useState([]);
@@ -448,11 +449,37 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
 
   return (
     <div className="goal-container">
-      <div className="sidebar">
+      {/* Mobile Menu Toggle */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={`hamburger ${isSidebarOpen ? 'open' : ''}`}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Link to="/anasayfa" className="logo-link"><h1 className="logo">FitWare</h1></Link>
         <nav className="sidebar-nav">
           {menuItems.map((item) => (
-            <Link key={item.id} to={item.path} className={`nav-item ${activeTab === item.id ? 'active' : ''}`}>
+            <Link 
+              key={item.id} 
+              to={item.path} 
+              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setIsSidebarOpen(false)}
+            >
               <span className="nav-icon">{item.icon}</span><span>{item.label}</span>
             </Link>
           ))}

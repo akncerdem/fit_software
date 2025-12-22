@@ -14,6 +14,7 @@ export default function Anasayfa() {
   const [badges, setBadges] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem('access') || sessionStorage.getItem('access');
@@ -247,8 +248,29 @@ export default function Anasayfa() {
 
   return (
     <div className="dashboard-container">
+      {/* Mobile Menu Toggle */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={`hamburger ${isSidebarOpen ? 'open' : ''}`}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Link to="/anasayfa" className="logo-link">
           <h1 className="logo">
             FitWare
@@ -261,6 +283,7 @@ export default function Anasayfa() {
       key={item.id}
       to={item.path}
       className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+      onClick={() => setIsSidebarOpen(false)}
     >
       <span className="nav-icon">{item.icon}</span>
       <span>{item.label}</span>
@@ -337,7 +360,7 @@ export default function Anasayfa() {
                 <div>
                   <h3 className="stat-title">Login Streak</h3>
                   <p className="stat-value stat-value-green">
-                    {getLoginStreak()} Day Streak
+                    {getLoginStreak()} Day{getLoginStreak() !== 1 ? 's' : ''}
                   </p>
                   <p className="stat-subtitle">Keep logging in!</p>
                 </div>
