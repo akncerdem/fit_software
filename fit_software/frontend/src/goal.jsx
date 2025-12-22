@@ -476,7 +476,7 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
               </div>
               <div><p className="user-name">{user.first_name} {user.last_name}</p><p className="user-email">{user.email}</p></div>
             </div>
-            <button onClick={handleLogout} className="logout-btn">Çıkış Yap</button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
         )}
       </div>

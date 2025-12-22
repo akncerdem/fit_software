@@ -183,20 +183,31 @@ body {
 
 .stat-card-content {
   display: flex;
-  justify-content: space-between;
+  flex-direction: row;
+  justify-content: center;
   align-items: center;
-  gap: 16px;
+  gap: 12px;
+  flex-wrap: nowrap;
+}
+
+.stat-card-content > div:first-child {
+  flex: 0 0 auto;
+  text-align: center;
+}
+
+.stat-card-content > .stat-icon {
+  flex: 0 0 auto;
 }
 
 .stat-title {
-  font-size: 14px;
+  font-size: 12px;
   font-weight: 500;
   color: #6b7280;
-  margin-bottom: 8px;
+  margin-bottom: 6px;
 }
 
 .stat-value {
-  font-size: 32px;
+  font-size: 24px;
   font-weight: bold;
   color: #111827;
   margin: 0;
@@ -207,14 +218,14 @@ body {
 }
 
 .stat-value-badge {
-  font-size: 32px;
+  font-size: 28px;
   font-weight: bold;
   color: #111827;
   margin: 0;
 }
 
 .stat-subtitle {
-  font-size: 14px;
+  font-size: 12px;
   color: #6b7280;
   margin-top: 4px;
 }
@@ -228,7 +239,6 @@ body {
   justify-content: center;
   font-size: 48px;
   flex-shrink: 0;
-  margin-left: auto;
 }
 
 .stat-icon-blue {

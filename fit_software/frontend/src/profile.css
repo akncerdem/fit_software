@@ -188,27 +188,32 @@
 }
 
 .profile-name {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   color: #111827;
-  margin: 0 0 8px 0;
+  margin: 16px 0 8px 0;
+  letter-spacing: -0.5px;
 }
 
 .profile-email {
   font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 16px 0;
+  color: #9ca3af;
+  margin: 0 0 20px 0;
+  letter-spacing: 0.3px;
 }
 
 .profile-level {
   display: inline-block;
-  padding: 6px 16px;
-  background-color: #2563eb;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
 }
 
 .profile-buttons {
@@ -624,18 +629,27 @@
 
 /* Profile Bio and Stats */
 .profile-bio {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 12px 0;
+  font-size: 15px;
+  color: #4b5563;
+  margin: 24px 0;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.7;
+  font-weight: 400;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #f9f9ff 100%);
+  border-radius: 10px;
+  border: 1px solid #e5e8ff;
 }
 
 .profile-stats {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 4px 0;
+  font-size: 15px;
+  color: #374151;
+  margin: 12px 0;
   text-align: center;
+  font-weight: 500;
+  padding: 10px 14px;
+  background-color: #f9fafb;
+  border-radius: 6px;
 }
 
 /* Responsive Modal */

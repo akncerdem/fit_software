@@ -298,7 +298,7 @@ export default function Anasayfa() {
               onClick={handleLogout}
               className="logout-btn"
             >
-              Çıkış Yap
+              Logout
             </button>
           </div>
         )}
@@ -353,7 +353,7 @@ export default function Anasayfa() {
                   {latestBadge ? (
                     <>
                       <p className="stat-value-badge">
-                        🏆 {latestBadge.badge_type}
+                        {latestBadge.badge_type}
                       </p>
                       <p className="stat-subtitle">
                         Earned {latestBadge.awarded_at ? new Date(latestBadge.awarded_at).toLocaleDateString() : ''}
@@ -472,7 +472,7 @@ export default function Anasayfa() {
               <h3 className="section-title">Activity Heatmap</h3>
               <div className="calendar-container">
                 <div className="calendar-month">
-                  {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
+                  {new Date().toLocaleString('en-US', { month: 'long', year: 'numeric' })}
                 </div>
                 <div className="calendar-grid">
                   {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (

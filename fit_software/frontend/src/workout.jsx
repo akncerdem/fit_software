@@ -846,7 +846,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
                 <p className="user-email" style={{ fontSize: '12px' }}>{user.email}</p>
               </div>
             </div>
-            <button onClick={handleLogout} className="logout-btn">Çıkış Yap</button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
         )}
       </div>

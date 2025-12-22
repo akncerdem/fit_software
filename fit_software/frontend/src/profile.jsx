@@ -340,7 +340,7 @@ export default function Profile() {
               </div>
             </div>
             <button onClick={handleLogout} className="logout-btn">
-              Çıkış Yap
+              Logout
             </button>
           </div>
         )}
