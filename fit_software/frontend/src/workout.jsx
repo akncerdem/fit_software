@@ -8,6 +8,7 @@ export default function Workout() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('workout');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Veri State'leri
   const [workouts, setWorkouts] = useState([]);
@@ -813,8 +814,29 @@ const handleApplyWorkoutAiSuggestion = async () => {
 
   return (
     <div className="workout-container">
+      {/* Mobile Menu Toggle */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={`hamburger ${isSidebarOpen ? 'open' : ''}`}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar  */}
-      <div className="sidebar">
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Link to="/anasayfa" className="logo-link">
           <h1 className="logo">FitWare</h1>
         </Link>
@@ -824,6 +846,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
               key={item.id}
               to={item.path}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setIsSidebarOpen(false)}
             >
               <span className="nav-icon">{item.icon}</span>
               <span>{item.label}</span>
