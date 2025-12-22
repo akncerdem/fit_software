@@ -134,11 +134,11 @@ class ChallengeProgressSerializer(serializers.Serializer):
         """
         instance: ChallengeJoined
         - Kullanıcının challenge içindeki ilerlemesini günceller
-        - Eğer bu kullanıcı challenge'ı oluşturan kişi ise
-          bağlı Goal.current_value değerini de senkronize eder.
+        - Kullanıcının aynı title/unit/target_value ile eşleşen Goal'lerini de günceller.
         """
         value = validated_data["progress_value"]
         challenge = instance.challenge
+        user = instance.user
 
         # 1) ChallengeJoined'i güncelle
         instance.progress_value = value
@@ -152,13 +152,32 @@ class ChallengeProgressSerializer(serializers.Serializer):
         # burada asla set ETMİYORUZ.
         instance.save()
 
-        # 2) Bağlı goal varsa ve goal aynı kullanıcıya aitse goal'u da güncelle
-        goal = getattr(challenge, "goal", None)
-        if goal and goal.user_id == instance.user_id:
-            goal.current_value = value
-            if challenge.target_value and value >= challenge.target_value:
-                goal.is_completed = True
-            goal.save()
+        # 2) Bu kullanıcının eşleşen goal'lerini bul ve güncelle
+        try:
+            # 2.a) FK ile gerçekten bu challenge'a bağlı olan goal (challenge yaratıcısı için)
+            goal_fk = getattr(challenge, "goal", None)
+
+            # 2.b) Aynı title + unit + target_value olan goallar (challenge'a join eden kullanıcılar için)
+            goals_match = Goal.objects.filter(
+                user=user,
+                title=challenge.title,
+                unit=challenge.unit,
+                target_value=challenge.target_value,
+            )
+
+            # FK goal'ünü de ekle (kullanıcı aynıysa)
+            goals_to_update = list(goals_match)
+            if goal_fk and goal_fk.user_id == user.id and goal_fk not in goals_to_update:
+                goals_to_update.append(goal_fk)
+
+            for goal in goals_to_update:
+                goal.current_value = value
+                if challenge.target_value and value >= challenge.target_value:
+                    goal.is_completed = True
+                goal.save()
+
+        except Exception as e:
+            print("Sync goal progress from challenge failed:", e)
 
         return instance
 
