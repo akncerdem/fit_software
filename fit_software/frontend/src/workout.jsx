@@ -8,6 +8,7 @@ export default function Workout() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('workout');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   
   // Veri State'leri
   const [workouts, setWorkouts] = useState([]);
@@ -376,6 +377,7 @@ const findBestExerciseMatch = (name, list) => {
   // eşik: istersen 0.5 yapabilirsin
   return bestScore >= 0.45 ? best : null;
 };
+
 
 const closeCreateWorkoutModal = () => {
   setShowModal(false);
@@ -811,10 +813,36 @@ const handleApplyWorkoutAiSuggestion = async () => {
     ex.name.toLowerCase().includes(templateExerciseSearch.toLowerCase())
   );
 
+  // CREATE WORKOUT SUCCESS MODAL STATE
+  const [showCreateSuccessModal, setShowCreateSuccessModal] = useState(false);
+
+
+
   return (
     <div className="workout-container">
+      {/* Mobile Menu Toggle */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={`hamburger ${isSidebarOpen ? 'open' : ''}`}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar  */}
-      <div className="sidebar">
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Link to="/anasayfa" className="logo-link">
           <h1 className="logo">FitWare</h1>
         </Link>
@@ -824,6 +852,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
               key={item.id}
               to={item.path}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setIsSidebarOpen(false)}
             >
               <span className="nav-icon">{item.icon}</span>
               <span>{item.label}</span>
@@ -1783,6 +1812,28 @@ const handleApplyWorkoutAiSuggestion = async () => {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showCreateSuccessModal && (
+        <div className="modal-overlay" style={{zIndex: 2000}}>
+          <div className="modal-content modal-small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-center">
+              <div className="success-icon">✨</div>
+              <h3 className="modal-title">Workout Created!</h3>
+            </div>
+            <p className="modal-message">
+              Your new workout template has been saved successfully.<br/>
+              Ready to crush some goals?
+            </p>
+            <div className="modal-actions centered">
+              <button 
+                className="btn-success-confirm" 
+                onClick={() => setShowCreateSuccessModal(false)}
+              >
+                Let's Go!
+              </button>
             </div>
           </div>
         </div>

@@ -14,6 +14,7 @@ export default function Profile() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBadgeModalOpen, setIsBadgeModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [formData, setFormData] = useState({
     height: '',
     weight: '',
@@ -296,8 +297,29 @@ export default function Profile() {
 
   return (
     <div className="profile-container">
+      {/* Mobile Menu Toggle */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={`hamburger ${isSidebarOpen ? 'open' : ''}`}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Link to="/anasayfa" className="logo-link">
           <h1 className="logo">FitWare</h1>
         </Link>
@@ -308,6 +330,7 @@ export default function Profile() {
               key={item.id}
               to={item.path}
               className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              onClick={() => setIsSidebarOpen(false)}
             >
               <span className="nav-icon">{item.icon}</span>
               <span>{item.label}</span>
