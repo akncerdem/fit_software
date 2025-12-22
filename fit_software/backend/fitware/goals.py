@@ -180,7 +180,7 @@ class GoalUpdateProgressSerializer(serializers.Serializer):
             ActivityLog.objects.get_or_create(
                 user=instance.user,
                 date=today,
-                defaults={'action_type': 'goal_completed'}
+                action_type='goal_completed'
             )
         
         instance.save()
@@ -286,7 +286,7 @@ class GoalViewSet(viewsets.ModelViewSet):
             activity_log, created = ActivityLog.objects.get_or_create(
                 user=user,
                 date=today,
-                defaults={'action_type': 'visit'}
+                action_type='visit'
             )
             return Response({
                 'success': True,
