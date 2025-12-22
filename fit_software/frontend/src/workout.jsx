@@ -658,7 +658,13 @@ const handleApplyWorkoutAiSuggestion = async () => {
         notes: completeForm.notes
       });
       // Then mark as complete
-      await api.post(`workouts/sessions/${selectedWorkout.id}/complete/`);
+      const completeResponse = await api.post(`workouts/sessions/${selectedWorkout.id}/complete/`);
+      
+      // Check if a new badge was earned
+      if (completeResponse.data?.new_badge) {
+        alert(`🎉 Congratulations! You earned a new badge: ${completeResponse.data.new_badge}`);
+      }
+      
       // Refresh data
       const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
       setSelectedWorkout(response.data);

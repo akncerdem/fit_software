@@ -97,7 +97,7 @@ class BadgeService:
         # Count completed workouts
         try:
             from workouts.models import WorkoutSession
-            completed_workouts = WorkoutSession.objects.filter(user=user).count()
+            completed_workouts = WorkoutSession.objects.filter(user=user, is_completed=True).count()
         except (ImportError, Exception):
             completed_workouts = 0
         
