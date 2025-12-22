@@ -378,6 +378,7 @@ const findBestExerciseMatch = (name, list) => {
   return bestScore >= 0.45 ? best : null;
 };
 
+
 const closeCreateWorkoutModal = () => {
   setShowModal(false);
   setFormData(DEFAULT_TEMPLATE_FORM);
@@ -811,6 +812,11 @@ const handleApplyWorkoutAiSuggestion = async () => {
   const filteredTemplateExercises = availableExercises.filter(ex => 
     ex.name.toLowerCase().includes(templateExerciseSearch.toLowerCase())
   );
+
+  // CREATE WORKOUT SUCCESS MODAL STATE
+  const [showCreateSuccessModal, setShowCreateSuccessModal] = useState(false);
+
+
 
   return (
     <div className="workout-container">
@@ -1806,6 +1812,28 @@ const handleApplyWorkoutAiSuggestion = async () => {
                   </button>
                 </>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {showCreateSuccessModal && (
+        <div className="modal-overlay" style={{zIndex: 2000}}>
+          <div className="modal-content modal-small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-center">
+              <div className="success-icon">✨</div>
+              <h3 className="modal-title">Workout Created!</h3>
+            </div>
+            <p className="modal-message">
+              Your new workout template has been saved successfully.<br/>
+              Ready to crush some goals?
+            </p>
+            <div className="modal-actions centered">
+              <button 
+                className="btn-success-confirm" 
+                onClick={() => setShowCreateSuccessModal(false)}
+              >
+                Let's Go!
+              </button>
             </div>
           </div>
         </div>

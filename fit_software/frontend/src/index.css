@@ -96,6 +96,12 @@ body {
   padding: 24px;
   display: flex;
   flex-direction: column;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+  justify-content: space-between;
 }
 
 .logo {
@@ -152,7 +158,6 @@ body {
 }
 
 .sidebar-footer {
-  margin-top: auto;
   padding-top: 24px;
   border-top: 1px solid #e5e7eb;
 }
@@ -210,7 +215,8 @@ body {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 32px;
-  width: calc(100% - 280px);
+  width: 100%;
+  margin-left: 280px;
 }
 
 .content-wrapper {
