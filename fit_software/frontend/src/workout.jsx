@@ -44,6 +44,9 @@ export default function Workout() {
     notes: ""
   });
 
+  // CREATE WORKOUT SUCCESS MODAL STATE
+  const [showCreateSuccessModal, setShowCreateSuccessModal] = useState(false);
+
   // EXERCISE STATE'LERİ
   const [availableExercises, setAvailableExercises] = useState([]);
   const [selectedExercises, setSelectedExercises] = useState([]);
@@ -337,7 +340,7 @@ export default function Workout() {
       if (typeof fetchWorkouts === 'function') fetchWorkouts(); 
       if (typeof fetchTemplates === 'function') fetchTemplates();
       
-      alert("Antrenman başarıyla oluşturuldu! 🎉");
+      setShowCreateSuccessModal(true);
 
     } catch (err) {
       // IMPROVED ERROR LOGGING
@@ -1910,6 +1913,31 @@ const handleApplyWorkoutAiSuggestion = async () => {
           </div>
         </div>
       )}
+
+      {/*  WORKOUT CREATED SUCCESS MODAL  */}
+      {showCreateSuccessModal && (
+        <div className="modal-overlay" style={{zIndex: 2000}}>
+          <div className="modal-content modal-small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-center">
+              <div className="success-icon">✨</div>
+              <h3 className="modal-title">Workout Created!</h3>
+            </div>
+            <p className="modal-message">
+              Your new workout template has been saved successfully.<br/>
+              Ready to crush some goals?
+            </p>
+            <div className="modal-actions centered">
+              <button 
+                className="btn-success-confirm" 
+                onClick={() => setShowCreateSuccessModal(false)}
+              >
+                Let's Go!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
