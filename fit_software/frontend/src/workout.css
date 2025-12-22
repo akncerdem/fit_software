@@ -1576,3 +1576,31 @@
 .btn-success-confirm:active {
   transform: translateY(0);
 }
+
+/* KART ÜZERİNDEKİ SİLME BUTONU STİLLERİ */
+.workout-card {
+  position: relative; 
+}
+
+.btn-delete-card-action {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 1.1rem;
+  cursor: pointer;
+  opacity: 0.4; 
+  transition: all 0.2s ease;
+  padding: 6px;
+  border-radius: 50%;
+  z-index: 5;
+  color: #64748b; 
+}
+
+.btn-delete-card-action:hover {
+  opacity: 1; 
+  background-color: #fee2e2; 
+  color: #ef4444; 
+  transform: scale(1.1); 
+}

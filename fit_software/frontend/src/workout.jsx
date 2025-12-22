@@ -278,12 +278,10 @@ export default function Workout() {
         fetchStats();
       }
       else if (type === 'template') {
-        if (!selectedTemplate) return; // Template silerken selectedTemplate ID'sini kullanıyoruz
         await api.delete(`workouts/templates/${id}/`); // ID parametreden geliyor
         setShowTemplateDetailModal(false);
         setSelectedTemplate(null);
         fetchTemplates();
-        alert("Template deleted.");
       }
     } catch (err) {
       console.error("Error deleting:", err);
@@ -1033,6 +1031,18 @@ const handleApplyWorkoutAiSuggestion = async () => {
               ) : (
                 templates.map((template) => (
                   <div key={template.id} className="workout-card template-card">
+                    {/*  SİLME BUTONU   */}
+                    <button
+                      className="btn-delete-card-action"
+                      onClick={(e) => {
+                        e.stopPropagation(); 
+                        requestDelete('template', template.id);
+                      }}
+                      title="Delete Template"
+                    >
+                      🗑️
+                    </button>
+                   
                     <div className="workout-card-content">
                       <h3 className="workout-card-title">{template.title}</h3>
                       <p className="workout-card-description">{template.description || 'No description'}</p>
