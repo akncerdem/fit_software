@@ -134,44 +134,50 @@ class ChallengeProgressSerializer(serializers.Serializer):
         """
         instance: ChallengeJoined
         - Kullanıcının challenge içindeki ilerlemesini günceller
-        - Aynı kullanıcıya ait eşleşen Goal kaydını da senkronize eder
+        - Kullanıcının aynı title/unit/target_value ile eşleşen Goal'lerini de günceller.
         """
         value = validated_data["progress_value"]
         challenge = instance.challenge
+        user = instance.user
 
         # 1) ChallengeJoined'i güncelle
         instance.progress_value = value
 
-        # yüzde hesabı
-        if challenge.target_value:
-            percent = min(100, (value / challenge.target_value) * 100)
-        else:
-            percent = 0
-
-        if challenge.target_value and value >= challenge.target_value:
-            instance.is_completed = True
-        else:
-            instance.is_completed = False
-
-        instance.save()
-
-        # 2) Aynı kullanıcı için, challenge ile uyumlu Goal'u bul
-        goal = (
-            Goal.objects.filter(
-                user=instance.user,
-                title=challenge.title,
-                target_value=challenge.target_value,
-                unit=challenge.unit,
-            )
-            .order_by("-created_at")
-            .first()
+        # hedefe ulaştı mı?
+        instance.is_completed = bool(
+            challenge.target_value and value >= challenge.target_value
         )
 
-        if goal:
-            goal.current_value = value
-            if challenge.target_value and value >= challenge.target_value:
-                goal.is_completed = True
-            goal.save()
+        # DİKKAT: progress_percent artık modelde @property ise
+        # burada asla set ETMİYORUZ.
+        instance.save()
+
+        # 2) Bu kullanıcının eşleşen goal'lerini bul ve güncelle
+        try:
+            # 2.a) FK ile gerçekten bu challenge'a bağlı olan goal (challenge yaratıcısı için)
+            goal_fk = getattr(challenge, "goal", None)
+
+            # 2.b) Aynı title + unit + target_value olan goallar (challenge'a join eden kullanıcılar için)
+            goals_match = Goal.objects.filter(
+                user=user,
+                title=challenge.title,
+                unit=challenge.unit,
+                target_value=challenge.target_value,
+            )
+
+            # FK goal'ünü de ekle (kullanıcı aynıysa)
+            goals_to_update = list(goals_match)
+            if goal_fk and goal_fk.user_id == user.id and goal_fk not in goals_to_update:
+                goals_to_update.append(goal_fk)
+
+            for goal in goals_to_update:
+                goal.current_value = value
+                if challenge.target_value and value >= challenge.target_value:
+                    goal.is_completed = True
+                goal.save()
+
+        except Exception as e:
+            print("Sync goal progress from challenge failed:", e)
 
         return instance
 
