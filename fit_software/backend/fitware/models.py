@@ -19,6 +19,7 @@ class Profile(models.Model):
     )
     height = models.FloatField(help_text="Height in cm", null=True, blank=True)
     weight = models.FloatField(help_text="Weight in kg", null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"

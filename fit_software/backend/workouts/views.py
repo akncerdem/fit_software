@@ -339,6 +339,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def complete(self, request, pk=None):
         session = self.get_object()
+        was_completed = session.is_completed
         session.is_completed = True
         
         if 'duration_minutes' in request.data:
@@ -349,6 +350,22 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             session.notes = request.data['notes']
         
         session.save()
+        
+        # Log activity for completed workout
+        if not was_completed:
+            from django.utils import timezone
+            from django.conf import settings
+            import pytz
+            from fitware.models import ActivityLog
+            
+            local_tz = pytz.timezone(settings.TIME_ZONE)
+            today = timezone.now().astimezone(local_tz).date()
+            ActivityLog.objects.get_or_create(
+                user=request.user,
+                date=today,
+                defaults={'action_type': 'workout_completed'}
+            )
+        
         return Response(WorkoutSessionSerializer(session).data)
 
     # --- UPDATED: Stats ---

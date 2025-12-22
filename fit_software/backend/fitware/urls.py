@@ -4,6 +4,7 @@ from urllib.parse import urlencode
 
 import requests
 from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
@@ -399,3 +400,6 @@ urlpatterns = [
     path("api/v1/auth/password/reset/", password_reset_request, name="password_reset_request"),
     path("api/v1/auth/password/reset/confirm/", password_reset_confirm, name="password_reset_confirm"),
 ]
+
+# Serve media files in development
+urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

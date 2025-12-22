@@ -1,5 +1,6 @@
 import { useNavigate, Link } from "react-router-dom";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { api } from "./config";
 import { goalsApi } from "./goalApi";
 import "./goal.css";
 
@@ -119,6 +120,7 @@ const getBadgeInfo = (progress) => {
 export default function Goal() {
   const navigate = useNavigate();
   const [user, setUser] = useState(null);
+  const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState('goal');
   
   // Data State
@@ -223,12 +225,25 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
     if (userData) { setUser(JSON.parse(userData)); }
     
     fetchData();
+    fetchProfile();
   }, [navigate]);
+
+  const fetchProfile = async () => {
+    try {
+      const response = await api.get('/profile/');
+      if (response.data) {
+        const profileData = Array.isArray(response.data) ? response.data[0] : response.data;
+        setProfile(profileData);
+      }
+    } catch (error) {
+      console.error('Error fetching profile:', error);
+    }
+  };
 
   const fetchData = async () => {
     try {
       setLoading(true); setError(null);
-      const goalsData = await goalsApi.getActive();
+      const goalsData = await goalsApi.getAll();
       setGoals(goalsData || []); 
 
       try {
@@ -381,7 +396,14 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
     try {
       const result = await goalsApi.updateProgress(selectedGoal.id, parsedValue);
       if (result.success) { 
-        fetchData(); setIsUpdateModalOpen(false); setSelectedGoal(null); 
+        fetchData();
+        // Check for new badges after goal update
+        try {
+          await api.post('/goals/check-badges/');
+        } catch (err) {
+          console.warn('Error checking badges:', err);
+        }
+        setIsUpdateModalOpen(false); setSelectedGoal(null); 
       }
     } catch (err) { console.error(err); alert('Failed to update.'); }
   };
@@ -418,8 +440,8 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
 
   // Stats
   const totalGoals = goals.length;
-  const completedGoals = goals.filter(g => (g.progress || 0) >= 100).length;
-  const activeGoalsCount = totalGoals - completedGoals;
+  const completedGoals = goals.filter(g => g.is_completed === true).length;
+  const activeGoalsCount = goals.filter(g => g.is_active && !g.is_completed).length;
   const totalProgressSum = goals.reduce((acc, curr) => acc + (curr.progress || 0), 0);
   const averageProgress = totalGoals > 0 ? Math.round(totalProgressSum / totalGoals) : 0;
   const nextMilestoneGoal = goals.filter(g => (g.progress || 0) < 100).sort((a, b) => (b.progress || 0) - (a.progress || 0))[0];
@@ -438,10 +460,23 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
         {user && (
           <div className="sidebar-footer">
             <div className="user-info">
-              <div className="user-avatar">👤</div>
+              <div className="user-avatar">
+                {profile?.profile_picture ? (
+                  <img 
+                    src={profile.profile_picture}
+                    alt="Profile" 
+                    className="sidebar-profile-picture"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                ) : (
+                  '👤'
+                )}
+              </div>
               <div><p className="user-name">{user.first_name} {user.last_name}</p><p className="user-email">{user.email}</p></div>
             </div>
-            <button onClick={handleLogout} className="logout-btn">Çıkış Yap</button>
+            <button onClick={handleLogout} className="logout-btn">Logout</button>
           </div>
         )}
       </div>
