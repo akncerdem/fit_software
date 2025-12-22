@@ -9,6 +9,7 @@ export default function Challenges() {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [activeTab, setActiveTab] = useState("challenges");
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState("all"); // 'all' | 'my'
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -362,8 +363,29 @@ export default function Challenges() {
 
   return (
     <div className="challenges-container">
+      {/* Mobile Menu Toggle */}
+      <button 
+        className="mobile-menu-toggle"
+        onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+        aria-label="Toggle menu"
+      >
+        <span className={`hamburger ${isSidebarOpen ? 'open' : ''}`}>
+          <span></span>
+          <span></span>
+          <span></span>
+        </span>
+      </button>
+
+      {/* Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="sidebar-overlay"
+          onClick={() => setIsSidebarOpen(false)}
+        ></div>
+      )}
+
       {/* Sidebar */}
-      <div className="sidebar">
+      <div className={`sidebar ${isSidebarOpen ? 'open' : ''}`}>
         <Link to="/anasayfa" className="logo-link">
           <h1 className="logo">FitWare</h1>
         </Link>
@@ -376,7 +398,10 @@ export default function Challenges() {
               className={`nav-item ${
                 activeTab === item.id ? "active" : ""
               }`}
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                setIsSidebarOpen(false);
+              }}
             >
               <span className="nav-icon">{item.icon}</span>
               <span>{item.label}</span>

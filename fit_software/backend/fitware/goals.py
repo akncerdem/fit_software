@@ -20,12 +20,13 @@ import pytz
 class ActivityLog(models.Model):
     """Kullanıcının hangi gün işlem yaptığını tutan tablo"""
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
-    action_type = models.CharField(max_length=50)  # 'create', 'update', 'visit'
+    action_type = models.CharField(max_length=50)  # 'create_goal', 'update_progress', 'visit', 'goal_completed'
     date = models.DateField(auto_now_add=False)  # Set manually with correct timezone
 
     class Meta:
         ordering = ['-date']
-        unique_together = ('user', 'date')
+        # Aynı kullanıcı, aynı gün, aynı action_type için tek kayıt
+        unique_together = ('user', 'date', 'action_type')
 
 
 class Goal(models.Model):
@@ -210,9 +211,14 @@ class GoalViewSet(viewsets.ModelViewSet):
     def _log_activity(self, action_type):
         try:
             user = self.request.user if self.request.user.is_authenticated else User.objects.first()
-            today = timezone.now().date()
-            if not ActivityLog.objects.filter(user=user, date=today).exists():
-                ActivityLog.objects.create(user=user, action_type=action_type, date=today)
+            local_tz = pytz.timezone(settings.TIME_ZONE)
+            today = timezone.now().astimezone(local_tz).date()
+            # Aynı kullanıcı, aynı gün, aynı action_type için tek kayıt (get_or_create)
+            ActivityLog.objects.get_or_create(
+                user=user,
+                date=today,
+                action_type=action_type
+            )
         except Exception as e:
             print(f"Log Error: {e}")  # Log hatası olsa bile sistemi durdurma
 
