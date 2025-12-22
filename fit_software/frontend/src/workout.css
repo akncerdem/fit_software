@@ -2,6 +2,70 @@
   display: flex;
   min-height: 100vh;
   background-color: #f8f9fa;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+/* Mobile Menu Toggle */
+.mobile-menu-toggle {
+  display: none;
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  z-index: 1001;
+  background-color: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 10px;
+  cursor: pointer;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s;
+}
+
+.mobile-menu-toggle:hover {
+  background-color: #f3f4f6;
+}
+
+.hamburger {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 24px;
+  height: 18px;
+  position: relative;
+}
+
+.hamburger span {
+  display: block;
+  width: 24px;
+  height: 2px;
+  background-color: #374151;
+  border-radius: 2px;
+  transition: all 0.3s ease;
+}
+
+.hamburger.open span:nth-child(1) {
+  transform: rotate(45deg) translate(6px, 6px);
+}
+
+.hamburger.open span:nth-child(2) {
+  opacity: 0;
+}
+
+.hamburger.open span:nth-child(3) {
+  transform: rotate(-45deg) translate(6px, -6px);
+}
+
+/* Sidebar Overlay */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
 }
 
 /* Sidebar (Mevcut CSS'ten korunmuştur) */
@@ -12,8 +76,6 @@
   display: flex;
   flex-direction: column;
   border-right: 1px solid #eee;
-  position: fixed;
-  height: 100vh;
 }
 
 .logo {
@@ -90,8 +152,9 @@
 /* Main Content */
 .main-content {
   flex: 1;
-  margin-left: 280px;
   padding: 2rem;
+  overflow-x: hidden;
+  width: calc(100% - 280px);
 }
 
 .content-wrapper {
@@ -280,6 +343,12 @@
   flex-direction: column;
   justify-content: space-between;
   transition: transform 0.2s, box-shadow 0.2s;
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  min-width: 0;
+  overflow-wrap: break-word;
+  word-wrap: break-word;
 }
 
 .workout-card:hover {
@@ -1338,8 +1407,40 @@
   background: #fecaca;
 }
 
-/* Responsive Modal */
+/* Responsive */
 @media (max-width: 768px) {
+  .mobile-menu-toggle {
+    display: block;
+  }
+
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    width: 280px;
+    transform: translateX(-100%);
+    z-index: 1000;
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar.open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    display: block;
+  }
+
+  .main-content {
+    width: 100% !important;
+    max-width: 100% !important;
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 70px;
+    margin: 0 !important;
+  }
+
   .modal-large {
     width: 95%;
     max-height: 90vh;
@@ -1429,4 +1530,113 @@
   background: #fff;
   cursor: pointer;
   font-weight: 700;
+}
+
+/* Responsive Design for Cards */
+@media (max-width: 768px) {
+  .workouts-grid {
+    grid-template-columns: 1fr;
+    gap: 1rem;
+  }
+
+  .workout-card {
+    padding: 1.25rem;
+  }
+
+  .workout-card-title {
+    font-size: 1rem;
+  }
+
+  .workout-card-description {
+    font-size: 0.8125rem;
+  }
+
+  .workout-card-details {
+    flex-wrap: wrap;
+    gap: 0.75rem;
+  }
+
+  .workout-card-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .btn-start,
+  .btn-view {
+    width: 100%;
+  }
+}
+
+@media (max-width: 480px) {
+  .workout-card {
+    padding: 1rem;
+  }
+
+  .workout-card-title {
+    font-size: 0.9375rem;
+  }
+
+  .workout-card-description {
+    font-size: 0.75rem;
+    min-height: 32px;
+  }
+
+  .workout-card-details {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+}
+
+/* FIX: CREATE WORKOUT - SELECTED EXERCISES  */
+
+.selected-exercise-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  gap: 1rem; 
+}
+
+.exercise-info {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex: 1; 
+  overflow: hidden; 
+}
+
+.exercise-inputs {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0; 
+}
+
+/* Inputların boyutunu sabitle */
+.exercise-inputs .input-small {
+  width: 70px !important; 
+  min-width: 70px;
+  padding: 0.4rem;
+  text-align: center;
+  margin: 0;
+  height: 38px; 
+}
+
+/* Çarpı (x) işareti */
+.exercise-inputs span {
+  font-weight: bold;
+  color: #64748b;
+}
+
+/* Silme butonu hizalaması */
+.btn-remove-exercise {
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  margin-left: 0.25rem;
 }
