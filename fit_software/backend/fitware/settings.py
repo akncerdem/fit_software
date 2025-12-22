@@ -3,6 +3,12 @@ from pathlib import Path
 from dotenv import load_dotenv
 from urllib.parse import urlparse
 from decouple import config
+import warnings
+import dj_database_url
+
+# Suppress urllib3 warnings about LibreSSL
+warnings.filterwarnings('ignore', message='urllib3 v2 only supports OpenSSL 1.1.1+')
+
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -120,10 +126,11 @@ if DATABASE_URL:
     }
 else:
     DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
+        'default': dj_database_url.config(
+            # Replace this string with the one you copied from Neon
+            default='postgresql://neondb_owner:npg_NtHduUS6w2LD@ep-billowing-brook-ahh4cpxc-pooler.c-3.us-east-1.aws.neon.tech/Db?sslmode=require&channel_binding=require',
+            conn_max_age=600
+        )
     }
 
 AUTH_PASSWORD_VALIDATORS = [
@@ -139,6 +146,8 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 REST_FRAMEWORK = {
@@ -185,3 +194,19 @@ GOOGLE_FRONTEND_REDIRECT = os.getenv(
     "GOOGLE_FRONTEND_REDIRECT",
     "http://localhost:5173/google-callback",
 )
+
+
+
+
+# --- Password reset email (DEV) ---
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
+
+DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")

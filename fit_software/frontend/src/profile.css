@@ -93,6 +93,13 @@
   font-size: 20px;
 }
 
+.sidebar-profile-picture {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .user-name {
   font-weight: 500;
   font-size: 14px;
@@ -173,28 +180,40 @@
   margin-bottom: 20px;
 }
 
+.profile-picture {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
 .profile-name {
-  font-size: 24px;
-  font-weight: 600;
+  font-size: 28px;
+  font-weight: 700;
   color: #111827;
-  margin: 0 0 8px 0;
+  margin: 16px 0 8px 0;
+  letter-spacing: -0.5px;
 }
 
 .profile-email {
   font-size: 14px;
-  color: #6b7280;
-  margin: 0 0 16px 0;
+  color: #9ca3af;
+  margin: 0 0 20px 0;
+  letter-spacing: 0.3px;
 }
 
 .profile-level {
   display: inline-block;
-  padding: 6px 16px;
-  background-color: #2563eb;
+  padding: 8px 18px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
   color: white;
-  border-radius: 6px;
+  border-radius: 8px;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   margin-bottom: 24px;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.2);
+  text-transform: capitalize;
+  letter-spacing: 0.5px;
 }
 
 .profile-buttons {
@@ -287,9 +306,36 @@
   text-align: center;
 }
 
+.stat-item .stat-icon {
+  font-size: 32px;
+  margin-bottom: 12px;
+  margin-left: 0 !important;
+  margin-right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  min-width: 50px;
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  padding: 0;
+}
+
 .stat-icon {
   font-size: 32px;
   margin-bottom: 12px;
+  margin-left: 0;
+  margin-right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  min-width: 50px;
+  width: 50px;
+  height: 50px;
+  text-align: center;
+  padding: 0;
 }
 
 .stat-value {
@@ -328,10 +374,34 @@
   border-radius: 12px;
   text-align: center;
   transition: transform 0.2s;
+  position: relative;
 }
 
 .badge-item:hover {
   transform: translateY(-4px);
+}
+
+.badge-delete-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  background-color: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.badge-delete-btn:hover {
+  background-color: #dc2626;
 }
 
 .badge-icon-large {
@@ -559,18 +629,27 @@
 
 /* Profile Bio and Stats */
 .profile-bio {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 12px 0;
+  font-size: 15px;
+  color: #4b5563;
+  margin: 24px 0;
   text-align: center;
-  line-height: 1.5;
+  line-height: 1.7;
+  font-weight: 400;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #f0f4ff 0%, #f9f9ff 100%);
+  border-radius: 10px;
+  border: 1px solid #e5e8ff;
 }
 
 .profile-stats {
-  font-size: 14px;
-  color: #6b7280;
-  margin: 4px 0;
+  font-size: 15px;
+  color: #374151;
+  margin: 12px 0;
   text-align: center;
+  font-weight: 500;
+  padding: 10px 14px;
+  background-color: #f9fafb;
+  border-radius: 6px;
 }
 
 /* Responsive Modal */

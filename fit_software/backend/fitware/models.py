@@ -8,26 +8,75 @@ from .goals import Goal
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     bio = models.TextField(blank=True, null=True)
-    fitness_level = models.CharField(max_length=50, blank=True, choices=[
-        ('no_exercise', 'I don\'t exercise'),
-        ('sometimes', 'Sometimes exercise'),
-        ('regular', 'Regular (3+ times per week)')
-    ])
+    fitness_level = models.CharField(
+        max_length=50,
+        blank=True,
+        choices=[
+            ("no_exercise", "I don't exercise"),
+            ("sometimes", "Sometimes exercise"),
+            ("regular", "Regular (3+ times per week)"),
+        ],
+    )
     height = models.FloatField(help_text="Height in cm", null=True, blank=True)
     weight = models.FloatField(help_text="Weight in kg", null=True, blank=True)
+    profile_picture = models.ImageField(upload_to='profile_pictures/', blank=True, null=True)
 
     def __str__(self):
         return f"{self.user.username}'s Profile"
 
+
 # CHALLENGE
 class Challenge(models.Model):
+    UNIT_CHOICES = [
+        ("km", "Kilometer"),
+        ("m", "Meters"),
+        ("miles", "Miles"),
+        ("workouts", "Workouts"),
+        ("minutes", "Minutes"),
+        ("min", "Minutes (short)"),
+        ("hr", "Hours"),
+        ("sets", "Sets"),
+        ("reps", "Repetitions"),
+        ("kg", "Kilogram"),
+        ("lbs", "Pounds"),
+        ("laps", "Laps"),
+        ("cal", "Calories"),
+        ("fav", "Body Fat %"),
+    ]
+
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
-    created_user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='created_challenges')
+    created_user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="created_challenges"
+    )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    badge_name = models.CharField(max_length=100, blank=True)
+    due_date = models.DateField(null=True, blank=True)
+
+    target_value = models.FloatField(
+        default=0,
+        help_text="Target amount, e.g. 20 for 20km or 10 for 10 workouts",
+    )
+    unit = models.CharField(
+        max_length=20,
+        choices=UNIT_CHOICES,
+        default="workouts",
+        help_text="Unit of the challenge target",
+    )
+
+    # 🔹 ER diyagramındaki goal_id
+    goal = models.ForeignKey(
+        Goal,
+        on_delete=models.CASCADE,
+        related_name="challenges",
+        null=True,
+        blank=True,
+    )
 
     def __str__(self):
         return self.title
+
 
 #  CHALLENGE JOINED (Ara Tablo)
 class ChallengeJoined(models.Model):
@@ -35,21 +84,48 @@ class ChallengeJoined(models.Model):
     challenge = models.ForeignKey(Challenge, on_delete=models.CASCADE)
     joined_at = models.DateTimeField(auto_now_add=True)
 
+    # kullanıcının ilerlemesi
+    progress_value = models.FloatField(
+        default=0,
+        help_text="User's current progress in challenge units",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    # 🔹 YENİ: bu kullanıcı challenge’ı bitirmiş mi?
+    is_completed = models.BooleanField(default=False)
+
+    class Meta:
+        unique_together = ("user", "challenge")
+
     def __str__(self):
         return f"{self.user.username} -> {self.challenge.title}"
+
+    @property
+    def progress_percent(self):
+        if self.challenge.target_value <= 0:
+            return 0
+        return min(
+            100,
+            round(self.progress_value / self.challenge.target_value * 100, 1),
+        )
+
 
 #  MOVEMENT 
 class Movement(models.Model):
     name = models.CharField(max_length=100)
-    category = models.CharField(max_length=50, choices=[
-        ('cardio', 'Cardio'),
-        ('strength', 'Strength'),
-        ('flexibility', 'Flexibility')
-    ])
+    category = models.CharField(
+        max_length=50,
+        choices=[
+            ("cardio", "Cardio"),
+            ("strength", "Strength"),
+            ("flexibility", "Flexibility"),
+        ],
+    )
     description = models.TextField(blank=True)
 
     def __str__(self):
         return self.name
+
 
 # 6. WORKOUT LOG
 class WorkoutLog(models.Model):
@@ -60,6 +136,7 @@ class WorkoutLog(models.Model):
 
     def __str__(self):
         return f"{self.title} - {self.user.username}"
+
 
 # 7. BADGE
 class Badge(models.Model):

@@ -2,56 +2,89 @@ import axios from 'axios';
 
 const API_BASE_URL = 'http://localhost:8000/api';
 
-// Axios instance oluştur
+// -----------------------------------------------------------------------------// Token helpers (supports a few common key names)
+// -----------------------------------------------------------------------------
+const getAccessToken = () =>
+  localStorage.getItem('access') ||
+  sessionStorage.getItem('access') ||
+  localStorage.getItem('access_token') ||
+  sessionStorage.getItem('access_token') ||
+  localStorage.getItem('token') ||
+  sessionStorage.getItem('token');
+
+const getRefreshToken = () =>
+  localStorage.getItem('refresh') ||
+  sessionStorage.getItem('refresh') ||
+  localStorage.getItem('refresh_token') ||
+  sessionStorage.getItem('refresh_token');
+
+const setAccessToken = (token) => {
+  // Prefer writing to the same storage where refresh token exists, otherwise localStorage.
+  const refreshInSession = !!sessionStorage.getItem('refresh') || !!sessionStorage.getItem('refresh_token');
+  if (refreshInSession) sessionStorage.setItem('access', token);
+  else localStorage.setItem('access', token);
+};
+
+// Axios instance
 const api = axios.create({
   baseURL: API_BASE_URL,
-  headers: {
-    'Content-Type': 'application/json',
-  },
+  headers: { 'Content-Type': 'application/json' },
 });
 
-// Request interceptor - Her istekte token ekle
+// Request interceptor - add Authorization header
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('access') || sessionStorage.getItem('access');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
+    const token = getAccessToken();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Response interceptor - Token yenileme
+// Response interceptor - refresh token on 401/403 (often happens when token expires)
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
 
-    // 401 hatası ve henüz retry yapılmadıysa
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    const status = error.response?.status;
+    const refreshToken = getRefreshToken();
+
+    // Avoid infinite loop (and avoid trying to refresh while already refreshing/logging in)
+    const isAuthEndpoint =
+      originalRequest?.url?.includes('/v1/auth/login/') ||
+      originalRequest?.url?.includes('/v1/auth/refresh/');
+
+    if (!isAuthEndpoint && (status === 401 || status === 403) && !originalRequest?._retry && refreshToken) {
       originalRequest._retry = true;
 
       try {
-        const refreshToken = localStorage.getItem('refresh') || sessionStorage.getItem('refresh');
-        if (refreshToken) {
-          const response = await axios.post(`${API_BASE_URL}/v1/auth/refresh/`, {
-            refresh: refreshToken,
-          });
+        const resp = await axios.post(`${API_BASE_URL}/v1/auth/refresh/`, { refresh: refreshToken });
 
-          const { access } = response.data;
-          localStorage.setItem('access', access);
-          
-          originalRequest.headers.Authorization = `Bearer ${access}`;
-          return api(originalRequest);
-        }
+        const { access } = resp.data || {};
+        if (!access) throw new Error('Refresh response did not include access token.');
+
+        setAccessToken(access);
+        originalRequest.headers = originalRequest.headers || {};
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+
+        return api(originalRequest);
       } catch (refreshError) {
-        // Refresh token da geçersizse logout
+        // Refresh token invalid -> clear and go to login
         localStorage.removeItem('access');
         localStorage.removeItem('refresh');
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('token');
         localStorage.removeItem('user');
+
+        sessionStorage.removeItem('access');
+        sessionStorage.removeItem('refresh');
+        sessionStorage.removeItem('access_token');
+        sessionStorage.removeItem('refresh_token');
+        sessionStorage.removeItem('token');
+        sessionStorage.removeItem('user');
+
         window.location.href = '/';
         return Promise.reject(refreshError);
       }
@@ -64,108 +97,25 @@ api.interceptors.response.use(
 // ============================================================================
 // GOALS API
 // ============================================================================
-
 export const goalsApi = {
-  // Tüm goal'ları getir
-  getAll: async () => {
-    try {
-      const response = await api.get('/goals/');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching goals:', error);
-      throw error;
-    }
-  },
-
-  // Tek goal getir
-  getById: async (id) => {
-    try {
-      const response = await api.get(`/goals/${id}/`);
-      return response.data;
-    } catch (error) {
-      console.error(`Error fetching goal ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Yeni goal oluştur
-  create: async (goalData) => {
-    try {
-      const response = await api.post('/goals/', goalData);
-      return response.data;
-    } catch (error) {
-      console.error('Error creating goal:', error);
-      throw error;
-    }
-  },
-
-  // Goal güncelle (tam)
-  update: async (id, goalData) => {
-    try {
-      const response = await api.put(`/goals/${id}/`, goalData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating goal ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Goal güncelle (kısmi)
-  partialUpdate: async (id, goalData) => {
-    try {
-      const response = await api.patch(`/goals/${id}/`, goalData);
-      return response.data;
-    } catch (error) {
-      console.error(`Error partially updating goal ${id}:`, error);
-      throw error;
-    }
-  },
-
-  // Goal sil
+  getAll: async () => (await api.get('/goals/')).data,
+  getById: async (id) => (await api.get(`/goals/${id}/`)).data,
+  create: async (goalData) => (await api.post('/goals/', goalData)).data,
+  update: async (id, goalData) => (await api.put(`/goals/${id}/`, goalData)).data,
+  partialUpdate: async (id, goalData) => (await api.patch(`/goals/${id}/`, goalData)).data,
   delete: async (id) => {
-    try {
-      await api.delete(`/goals/${id}/`);
-      return true;
-    } catch (error) {
-      console.error(`Error deleting goal ${id}:`, error);
-      throw error;
-    }
+    await api.delete(`/goals/${id}/`);
+    return true;
   },
+  updateProgress: async (id, currentValue) =>
+    (await api.post(`/goals/${id}/update-progress/`, { current_value: currentValue })).data,
 
-  // Progress güncelle
-  updateProgress: async (id, currentValue) => {
-    try {
-      const response = await api.post(`/goals/${id}/update-progress/`, {
-        current_value: currentValue,
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error updating progress for goal ${id}:`, error);
-      throw error;
-    }
-  },
+  getActive: async () => (await api.get('/goals/active/')).data,
+  getLogs: async () => (await api.get('/goals/activity_logs/')).data,
+  suggest: async (title, description) =>
+    (await api.post('/goals/suggest/', { title, description })).data,
 
-  // Aktif goal'ları getir
-  getActive: async () => {
-    try {
-      const response = await api.get('/goals/active/');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching active goals:', error);
-      throw error;
-    }
-  },
-
-  // Goal istatistikleri
-  getStats: async () => {
-    try {
-      const response = await api.get('/goals/stats/');
-      return response.data;
-    } catch (error) {
-      console.error('Error fetching goal stats:', error);
-      throw error;
-    }
-  },
+  getStats: async () => (await api.get('/goals/stats/')).data,
 };
 
 export default api;

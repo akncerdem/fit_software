@@ -73,5 +73,3 @@ git push -u origin main
   - `CORS_ALLOW_ALL`: `True` (dev) or `False` and configure `CORS_ALLOWED_ORIGINS`.
 
 - **Frontend** reads API base URL from `src/config.js` (`VITE_API_BASE` also supported).
-
-> Postgres can be added later via Docker or local install. This starter defaults to SQLite for development to keep setup fast.
