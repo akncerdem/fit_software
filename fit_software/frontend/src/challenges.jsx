@@ -24,7 +24,6 @@ export default function Challenges() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newTitle, setNewTitle] = useState("");
   const [newDescription, setNewDescription] = useState("");
-  const [newBadge, setNewBadge] = useState("");
   const [newDueDate, setNewDueDate] = useState("");
   const [newTargetValue, setNewTargetValue] = useState("");
   const [newUnit, setNewUnit] = useState("workouts");
@@ -248,7 +247,6 @@ export default function Challenges() {
       const body = {
         title: newTitle,
         description: newDescription,
-        badge: newBadge,
         due_date: newDueDate || null,
         target_value: newTargetValue ? parseFloat(newTargetValue) : null,
         unit: newUnit || null,
@@ -275,7 +273,6 @@ export default function Challenges() {
       setShowCreateModal(false);
       setNewTitle("");
       setNewDescription("");
-      setNewBadge("");
       setNewDueDate("");
       setNewTargetValue("");
       setNewUnit("");
@@ -640,17 +637,6 @@ export default function Challenges() {
               </label>
 
               <label className="form-label">
-                Badge name
-                <input
-                  type="text"
-                  className="form-input"
-                  value={newBadge}
-                  onChange={(e) => setNewBadge(e.target.value)}
-                  placeholder="örn. Marathon Starter Badge"
-                />
-              </label>
-
-              <label className="form-label">
                 Due date
                 <input
                   type="date"
@@ -682,7 +668,7 @@ export default function Challenges() {
                   required
                 >
                   <option value="" disabled>
-                    Birim seçin...
+                    Select Unit...
                   </option>
                   {CHALLENGE_UNIT_OPTIONS.map((u) => (
                     <option key={u.value} value={u.value}>
@@ -736,10 +722,6 @@ export default function Challenges() {
                   {selectedChallenge.description}
                 </p>
 
-                <div className="modal-row">
-                  <span>Badge:</span>
-                  <strong>{selectedChallenge.badge || "No badge"}</strong>
-                </div>
                 <div className="modal-row">
                   <span>Participants:</span>
                   <strong>{selectedChallenge.participants}</strong>
