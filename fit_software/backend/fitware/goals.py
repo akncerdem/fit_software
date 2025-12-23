@@ -311,6 +311,7 @@ class GoalViewSet(viewsets.ModelViewSet):
     def suggest(self, request):
         """
         Returns a suggestion for a goal based on the title/description.
+        Uses profile data (height, weight, fitness_level) for personalized suggestions if available.
 
         - If the title looks meaningless (only random chars / only numbers / only symbols),
           returns: recognized=False, alternative=None.
@@ -319,6 +320,12 @@ class GoalViewSet(viewsets.ModelViewSet):
         """
         title_raw = (request.data.get("title") or "").strip()
         desc_raw = (request.data.get("description") or "").strip()
+        
+        # Get profile data from request (optional - for personalized suggestions)
+        profile_data = request.data.get("profile") or {}
+        user_height = profile_data.get("height")  # in cm
+        user_weight = profile_data.get("weight")  # in kg
+        user_fitness_level = profile_data.get("fitness_level")  # no_exercise, sometimes, regular
 
         title = title_raw.lower()
         desc = desc_raw.lower()
@@ -378,16 +385,54 @@ class GoalViewSet(viewsets.ModelViewSet):
             model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
             url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1/chat/completions")
 
-            system_msg = (
+            # Build personalized system message based on profile availability
+            base_system = (
                 "You are a fitness goal assistant. Given a user's goal title and description, "
                 "generate ONE realistic, measurable goal suggestion. "
+            )
+            
+            if user_height or user_weight or user_fitness_level:
+                fitness_desc = {
+                    "no_exercise": "beginner who doesn't exercise regularly",
+                    "sometimes": "intermediate who exercises sometimes",
+                    "regular": "active person who exercises 3+ times per week"
+                }.get(user_fitness_level, "")
+                
+                base_system += (
+                    "IMPORTANT: Personalize the goal based on the user's profile. "
+                )
+                if user_fitness_level:
+                    if user_fitness_level == "no_exercise":
+                        base_system += "Since the user is a beginner, suggest LIGHTER and more achievable targets. "
+                    elif user_fitness_level == "regular":
+                        base_system += "Since the user exercises regularly, you can suggest more CHALLENGING targets. "
+                    else:
+                        base_system += "Suggest moderate targets suitable for someone who exercises sometimes. "
+            
+            system_msg = base_system + (
                 "Return STRICT JSON only (no markdown) with keys: "
                 "icon (string emoji), type (string), unit (string), target_value (number), "
                 "timeline_days (integer), message (string). "
                 "If the input is unclear, still return a safe generic suggestion."
             )
 
+            # Build user message with profile context if available
             user_msg = f"Title: {title_text}\nDescription: {desc_text}\n"
+            
+            if user_height or user_weight or user_fitness_level:
+                user_msg += "\nUser Profile:\n"
+                if user_height:
+                    user_msg += f"- Height: {user_height} cm\n"
+                if user_weight:
+                    user_msg += f"- Weight: {user_weight} kg\n"
+                if user_fitness_level:
+                    fitness_labels = {
+                        "no_exercise": "Beginner (doesn't exercise)",
+                        "sometimes": "Intermediate (sometimes exercises)",
+                        "regular": "Active (exercises 3+ times/week)"
+                    }
+                    user_msg += f"- Fitness Level: {fitness_labels.get(user_fitness_level, user_fitness_level)}\n"
+                user_msg += "\nPlease tailor the suggestion to this user's fitness level and body metrics."
 
             payload = {
                 "model": model,

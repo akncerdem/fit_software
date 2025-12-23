@@ -59,7 +59,7 @@ def _extract_json(text: str):
         return None
 
 
-def _groq_chat(prompt: str, model=None):
+def _groq_chat(prompt: str, model=None, profile_data=None):
     api_key = os.getenv("GROQ_API_KEY")
     if not api_key:
         return None, "Missing GROQ_API_KEY"
@@ -72,18 +72,48 @@ def _groq_chat(prompt: str, model=None):
         "Content-Type": "application/json",
     }
 
+    # Build personalized system message
+    base_system = "You are a fitness coach. Return ONLY valid JSON. No markdown, no explanations. "
+    
+    # Add personalization based on profile if available
+    if profile_data:
+        fitness_level = profile_data.get("fitness_level")
+        height = profile_data.get("height")
+        weight = profile_data.get("weight")
+        
+        if fitness_level or height or weight:
+            base_system += "IMPORTANT: Personalize the workout based on the user's profile. "
+            
+            if fitness_level == "no_exercise":
+                base_system += (
+                    "The user is a BEGINNER who doesn't exercise regularly. "
+                    "Suggest FEWER sets (2-3), LOWER reps (6-8), and include REST periods. "
+                    "Choose simpler exercises that are easier to perform. "
+                )
+            elif fitness_level == "regular":
+                base_system += (
+                    "The user is ADVANCED and exercises 3+ times per week. "
+                    "Suggest MORE sets (4-5), HIGHER reps (10-15), and include challenging variations. "
+                    "You can include complex compound movements. "
+                )
+            else:  # sometimes or unknown
+                base_system += (
+                    "The user has INTERMEDIATE fitness level. "
+                    "Suggest moderate sets (3-4) and standard rep ranges (8-12). "
+                )
+    
+    base_system += (
+        "Schema: {recognized:boolean, message:string, alternative:null|{title:string, notes:string, exercises:[{name:string, sets:int, reps:string}]}}. "
+        "If the title is unclear or not a workout, set recognized=false and alternative=null."
+    )
+
     payload = {
         "model": model,
         "temperature": 0.2,
         "messages": [
             {
                 "role": "system",
-                "content": (
-                    "You are a fitness coach. Return ONLY valid JSON. "
-                    "No markdown, no explanations. "
-                    "Schema: {recognized:boolean, message:string, alternative:null|{title:string, notes:string, exercises:[{name:string, sets:int, reps:string}]}}. "
-                    "If the title is unclear or not a workout, set recognized=false and alternative=null."
-                ),
+                "content": base_system,
             },
             {"role": "user", "content": prompt},
         ],
@@ -128,6 +158,9 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
     def suggest(self, request):
         title = (request.data.get('title') or '').strip()
         notes = (request.data.get('notes') or request.data.get('description') or '').strip()
+        
+        # Get profile data from request (optional - for personalized suggestions)
+        profile_data = request.data.get('profile') or {}
     
         if _is_unknown_text(title):
             return Response({
@@ -136,15 +169,31 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
                 "alternative": None
             }, status=status.HTTP_200_OK)
     
-        prompt = (
-            f"Workout title: {title}\n"
-            f"Notes: {notes}\n\n"
+        # Build prompt with profile context if available
+        prompt = f"Workout title: {title}\nNotes: {notes}\n\n"
+        
+        if profile_data.get('height') or profile_data.get('weight') or profile_data.get('fitness_level'):
+            prompt += "User Profile:\n"
+            if profile_data.get('height'):
+                prompt += f"- Height: {profile_data['height']} cm\n"
+            if profile_data.get('weight'):
+                prompt += f"- Weight: {profile_data['weight']} kg\n"
+            if profile_data.get('fitness_level'):
+                fitness_labels = {
+                    "no_exercise": "Beginner (doesn't exercise)",
+                    "sometimes": "Intermediate (sometimes exercises)",
+                    "regular": "Active (exercises 3+ times/week)"
+                }
+                prompt += f"- Fitness Level: {fitness_labels.get(profile_data['fitness_level'], profile_data['fitness_level'])}\n"
+            prompt += "\nPlease tailor the workout to this user's fitness level.\n\n"
+        
+        prompt += (
             "Create a workout suggestion for this title. "
-            "Pick 4-8 common exercises. Use concise names like 'Back Squat', 'Bench Press',     'Deadlift'. "
+            "Pick 4-8 common exercises. Use concise names like 'Back Squat', 'Bench Press', 'Deadlift'. "
             "Return JSON in the required schema."
         )
     
-        content, err = _groq_chat(prompt)
+        content, err = _groq_chat(prompt, profile_data=profile_data)
         if content:
             parsed = _extract_json(content)
             if isinstance(parsed, dict) and "recognized" in parsed and "message" in parsed:

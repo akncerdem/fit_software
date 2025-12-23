@@ -215,7 +215,8 @@ const handleGetAiSuggestion = async () => {
   try {
     setAiLoading(true);
     setAiError(null);
-    const res = await goalsApi.suggest(newGoal.title, newGoal.description);
+    // Pass profile data for personalized suggestions
+    const res = await goalsApi.suggest(newGoal.title, newGoal.description, profile);
     setAiSuggestion(res);
     setAiOpen(true);
   } catch (e) {

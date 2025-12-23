@@ -407,7 +407,16 @@ const handleGetWorkoutAiSuggestion = async () => {
   setAiError(null);
 
   try {
-    const resp = await api.post("workouts/templates/suggest/", { title, notes });
+    // Build request payload with profile data for personalized suggestions
+    const payload = { title, notes };
+    if (profile && (profile.height || profile.weight || profile.fitness_level)) {
+      payload.profile = {
+        height: profile.height || null,
+        weight: profile.weight || null,
+        fitness_level: profile.fitness_level || null
+      };
+    }
+    const resp = await api.post("workouts/templates/suggest/", payload);
     setAiSuggestion(resp.data);
     setAiOpen(true);
   } catch (err) {
