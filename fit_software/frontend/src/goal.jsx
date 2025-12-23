@@ -278,8 +278,9 @@ const handleApplySuggestion = () => {
   };
 
 const [isModalOpen, setIsModalOpen] = useState(false);
-  
-const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯', current_value: 0, target_value: '', unit: 'workouts' });
+
+const initialGoal = { title: '', description: '', icon: '📉', current_value: 0, target_value: '', unit: 'kg' };
+const [newGoal, setNewGoal] = useState(initialGoal);
   const titleOk = !!newGoal.title?.trim();
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [selectedGoal, setSelectedGoal] = useState(null); 
@@ -638,6 +639,7 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
           <div className="goals-header">
             <div className="goals-title-section"><h1 className="goals-title">My Goals</h1><p className="goals-description">Track your fitness objectives</p></div>
             <button className="btn-add-goal" onClick={() => {
+            setNewGoal(initialGoal);
             setIsModalOpen(true);
             setAiSuggestion(null);
             setAiError(null);
@@ -684,7 +686,7 @@ const [newGoal, setNewGoal] = useState({ title: '', description: '', icon: '🎯
     onClick={handleGetAiSuggestion}
     disabled={!titleOk || aiLoading}
   >
-    {aiLoading ? "Loading..." : "Get AI Suggestions"}
+    {aiLoading ? "Loading..." : "✨ Get AI Suggestions"}
   </button>
 
 {(aiError || aiSuggestion) && (
