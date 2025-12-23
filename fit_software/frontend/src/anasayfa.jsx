@@ -160,19 +160,27 @@ export default function Anasayfa() {
     
     // Count consecutive days from today
     let streak = 0;
+    
+    // Get today's date in YYYY-MM-DD format using local timezone (not UTC)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    let dateStr = `${year}-${month}-${day}`;
     
-    let currentDate = new Date(today);
-    
-    while (true) {
-      const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD format
-      if (daySet.has(dateStr)) {
-        streak++;
-        currentDate.setDate(currentDate.getDate() - 1);
-      } else {
-        break;
-      }
+    // Count backwards from today
+    while (daySet.has(dateStr)) {
+      streak++;
+      
+      // Move to previous day
+      const currentDate = new Date(dateStr);
+      currentDate.setDate(currentDate.getDate() - 1);
+      
+      // Format as YYYY-MM-DD
+      const prevYear = currentDate.getFullYear();
+      const prevMonth = String(currentDate.getMonth() + 1).padStart(2, '0');
+      const prevDay = String(currentDate.getDate()).padStart(2, '0');
+      dateStr = `${prevYear}-${prevMonth}-${prevDay}`;
     }
     
     return streak;

@@ -366,7 +366,7 @@ class WorkoutSessionViewSet(viewsets.ModelViewSet):
             ActivityLog.objects.get_or_create(
                 user=request.user,
                 date=today,
-                defaults={'action_type': 'workout_completed'}
+                action_type='workout_completed'
             )
             
             # Get badges before check

@@ -279,14 +279,6 @@ export default function Profile() {
       activeGoals: 4
     },
     badges: [
-      { id: 1, name: 'Week Warrior', icon: '🏆', date: 'Nov 18, 2025' },
-      { id: 2, name: 'Early Bird', icon: '🔓', date: 'Nov 12, 2025' },
-      { id: 3, name: 'Consistency King', icon: '💪', date: 'Nov 5, 2025' },
-      { id: 4, name: 'Push-up Pro', icon: '💯', date: 'Oct 28, 2025' },
-      { id: 5, name: 'Fire Starter', icon: '🔥', date: 'Oct 20, 2025' },
-      { id: 6, name: 'Strength Builder', icon: '🏋️', date: 'Oct 15, 2025' },
-      { id: 7, name: 'Cardio Champion', icon: '🏃', date: 'Oct 8, 2025' },
-      { id: 8, name: 'Rising Star', icon: '⭐', date: 'Oct 1, 2025' }
     ]
   };
 
@@ -458,7 +450,7 @@ export default function Profile() {
                     color: '#666',
                     fontSize: '0.95rem'
                   }}>
-                    You haven't earned any badges yet — start your first goal to begin your journey!
+                    You haven't earned any badges yet — start your first goal or workout to begin your journey!
                   </div>
                 ) : (
                   <div className="badges-grid">
