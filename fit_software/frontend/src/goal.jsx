@@ -175,7 +175,7 @@ const CircularProgress = ({ size, strokeWidth, percentage, color }) => {
       <circle className="circle-bg" cx={size / 2} cy={size / 2} r={radius} strokeWidth={`${strokeWidth}px`} />
       <circle className="circle" cx={size / 2} cy={size / 2} r={radius} strokeWidth={`${strokeWidth}px`} transform={`rotate(-90 ${size / 2} ${size / 2})`} style={{ stroke: color, strokeDasharray: `${dash} ${circumference}`, transition: "stroke-dasharray 0.5s ease" }} />
       <text x="50%" y="45%" dy=".3em" className="percentage-text">{safePercentage}%</text>
-      <text x="50%" y="65%" dy=".3em" className="label-text">Success</text>
+      <text x="50%" y="65%" dy=".3em" className="label-text">Total Progress</text>
     </svg>
   );
 };
@@ -595,7 +595,7 @@ const [newGoal, setNewGoal] = useState(initialGoal);
                 <div className="stats-row" style={{ marginBottom: '24px' }}>
                   <div className="stat-card"><span className="stat-icon">🎯</span><span className="stat-value">{activeGoalsCount}</span><span className="stat-label">Active</span></div>
                   <div className="stat-card"><span className="stat-icon">✅</span><span className="stat-value">{completedGoals}</span><span className="stat-label">Done</span></div>
-                  <div className="stat-card"><span className="stat-icon">🔥</span><span className="stat-value">{totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0}%</span><span className="stat-label">Success</span></div>
+                  <div className="stat-card"><span className="stat-icon">🔥</span><span className="stat-value">{totalGoals > 0 ? Math.round((completedGoals / totalGoals) * 100) : 0}%</span><span className="stat-label">Done Ratio</span></div>
                 </div>
                 <div className="overall-progress-container">
                    {totalGoals === 0 ? <div className="milestone-text"><span>👋 Welcome! Add your first goal.</span></div> 
@@ -664,7 +664,7 @@ const [newGoal, setNewGoal] = useState(initialGoal);
                       <div className="goal-stats"><span className="goal-current">{goal.current_value}</span><span className="goal-separator">/</span><span className="goal-target">{goal.target_value} {goal.unit}</span></div>
                     </div>
                     <div className="goal-progress-section"><div className="progress-label"><span>Progress</span><span>{goal.progress || 0}%</span></div><div className="goal-progress-bar"><div className="goal-progress-fill" style={{ width: `${goal.progress || 0}%` }}></div></div></div>
-                    <div className="goal-card-footer"><div className="current-value">Current: {goal.current_value}</div><div className="goal-actions"><button className="btn-update" onClick={() => openUpdateModal(goal)}>Update</button><button className="btn-delete" onClick={() => openDeleteModal(goal)} title="Delete">Delete</button></div></div>
+                    <div className="goal-card-footer"><div className="current-value">Current: {goal.current_value}</div><div className="goal-actions">{!goal.is_completed && <button className="btn-update" onClick={() => openUpdateModal(goal)}>Update</button>}<button className="btn-delete" onClick={() => openDeleteModal(goal)} title="Delete">Delete</button></div></div>
                   </div>
                 );
               })}
