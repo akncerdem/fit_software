@@ -17,32 +17,21 @@ import json
 import requests
 
 # --- AI WORKOUT SUGGESTION HELPERS ---
-def _is_unknown_text(t: str) -> bool:
+def _is_obviously_invalid(t: str) -> bool:
+    """Only catch the most obvious invalid inputs. Let AI decide the rest."""
     t = (t or "").strip()
-    if len(t) < 3:
+    
+    # Too short
+    if len(t) < 2:
         return True
 
-    # At least one letter
+    # No letters at all
     if not re.search(r"[a-zA-ZçğıöşüÇĞİÖŞÜ]", t):
         return True
 
-    # same char repeated
-    if re.fullmatch(r"(.)\1{3,}", t):
+    # Same character repeated (aaaa, 1111)
+    if re.fullmatch(r"(.)\1{2,}", t):
         return True
-
-    tl = t.lower()
-
-    # long consonant streak (gibberish)
-    if re.search(r"[bcçdfgğhjklmnprsştvyz]{5,}", tl):
-        return True
-
-    # very low vowel ratio
-    letters = re.findall(r"[a-zA-ZçğıöşüÇĞİÖŞÜ]", t)
-    if len(letters) >= 6:
-        vowels = set(list("aeiouöüıAEIOUÖÜİ"))
-        vowel_count = sum(1 for ch in letters if ch in vowels)
-        if (vowel_count / len(letters)) < 0.28:
-            return True
 
     return False
 
@@ -72,8 +61,15 @@ def _groq_chat(prompt: str, model=None, profile_data=None):
         "Content-Type": "application/json",
     }
 
-    # Build personalized system message
-    base_system = "You are a fitness coach. Return ONLY valid JSON. No markdown, no explanations. "
+    # Build personalized system message - AI decides if input is valid
+    base_system = (
+        "You are a fitness coach. Return ONLY valid JSON. No markdown, no explanations.\n\n"
+        "FIRST: Determine if the input is a valid workout/exercise request. "
+        "If the input is gibberish, random characters, keyboard mashing (like 'qwerty', 'asdf', 'xyz123'), "
+        "or completely unrelated to fitness/workouts, return:\n"
+        '{"recognized": false, "message": "This doesn\'t appear to be a workout. Please describe what exercise you want to do.", "alternative": null}\n\n'
+        "If it IS a valid workout request, create a workout suggestion.\n"
+    )
     
     # Add personalization based on profile if available
     if profile_data:
@@ -82,29 +78,28 @@ def _groq_chat(prompt: str, model=None, profile_data=None):
         weight = profile_data.get("weight")
         
         if fitness_level or height or weight:
-            base_system += "IMPORTANT: Personalize the workout based on the user's profile. "
+            base_system += "IMPORTANT: Personalize the workout based on the user's profile.\n"
             
             if fitness_level == "no_exercise":
                 base_system += (
                     "The user is a BEGINNER who doesn't exercise regularly. "
                     "Suggest FEWER sets (2-3), LOWER reps (6-8), and include REST periods. "
-                    "Choose simpler exercises that are easier to perform. "
+                    "Choose simpler exercises that are easier to perform.\n"
                 )
             elif fitness_level == "regular":
                 base_system += (
                     "The user is ADVANCED and exercises 3+ times per week. "
                     "Suggest MORE sets (4-5), HIGHER reps (10-15), and include challenging variations. "
-                    "You can include complex compound movements. "
+                    "You can include complex compound movements.\n"
                 )
             else:  # sometimes or unknown
                 base_system += (
                     "The user has INTERMEDIATE fitness level. "
-                    "Suggest moderate sets (3-4) and standard rep ranges (8-12). "
+                    "Suggest moderate sets (3-4) and standard rep ranges (8-12).\n"
                 )
     
     base_system += (
-        "Schema: {recognized:boolean, message:string, alternative:null|{title:string, notes:string, exercises:[{name:string, sets:int, reps:string}]}}. "
-        "If the title is unclear or not a workout, set recognized=false and alternative=null."
+        "\nSchema for valid workouts: {\"recognized\": true, \"message\": \"string\", \"alternative\": {\"title\": \"string\", \"notes\": \"string\", \"exercises\": [{\"name\": \"string\", \"sets\": int, \"reps\": \"string\"}]}}"
     )
 
     payload = {
@@ -162,15 +157,16 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
         # Get profile data from request (optional - for personalized suggestions)
         profile_data = request.data.get('profile') or {}
     
-        if _is_unknown_text(title):
+        # Only catch obviously invalid inputs (empty, no letters, repeated chars)
+        if _is_obviously_invalid(title):
             return Response({
                 "recognized": False,
-                "message": "Unknown goal. Please provide a clear description of your fitness    goal.",
+                "message": "Please enter a valid workout title.",
                 "alternative": None
             }, status=status.HTTP_200_OK)
     
-        # Build prompt with profile context if available
-        prompt = f"Workout title: {title}\nNotes: {notes}\n\n"
+        # Build prompt - let AI decide if it's a valid workout
+        prompt = f"User wants to create a workout with:\nTitle: {title}\nNotes: {notes}\n\n"
         
         if profile_data.get('height') or profile_data.get('weight') or profile_data.get('fitness_level'):
             prompt += "User Profile:\n"
@@ -188,9 +184,9 @@ class WorkoutTemplateViewSet(viewsets.ModelViewSet):
             prompt += "\nPlease tailor the workout to this user's fitness level.\n\n"
         
         prompt += (
-            "Create a workout suggestion for this title. "
-            "Pick 4-8 common exercises. Use concise names like 'Back Squat', 'Bench Press', 'Deadlift'. "
-            "Return JSON in the required schema."
+            "Is this a valid workout request? If yes, create a workout with 4-8 exercises. "
+            "Use concise exercise names like 'Back Squat', 'Bench Press', 'Deadlift'. "
+            "If no, explain why this isn't a valid workout request."
         )
     
         content, err = _groq_chat(prompt, profile_data=profile_data)
