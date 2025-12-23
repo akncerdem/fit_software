@@ -49,6 +49,9 @@ export default function Workout() {
   // CREATE WORKOUT SUCCESS MODAL STATE
   const [showCreateSuccessModal, setShowCreateSuccessModal] = useState(false);
 
+  // TEMPLATE EDIT SUCCESS MODAL STATE
+  const [showEditSuccessModal, setShowEditSuccessModal] = useState(false);
+
   // EXERCISE STATE'LERİ
   const [availableExercises, setAvailableExercises] = useState([]);
   const [selectedExercises, setSelectedExercises] = useState([]);
@@ -844,7 +847,7 @@ const handleApplyWorkoutAiSuggestion = async () => {
       setSelectedTemplate(response.data);
       setEditingTemplate(false);
       fetchTemplates();
-      alert("Template updated! ✅");
+      setShowEditSuccessModal(true);
     } catch (err) {
       console.error("Error updating template:", err);
       alert("Could not update template.");
@@ -2000,6 +2003,30 @@ const handleApplyWorkoutAiSuggestion = async () => {
                 onClick={() => setShowSuccessModal(false)}
               >
                 Awesome!
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+{/*  TEMPLATE UPDATE SUCCESS MODAL  */}
+      {showEditSuccessModal && (
+        <div className="modal-overlay" style={{zIndex: 2000}}>
+          <div className="modal-content modal-small" onClick={e => e.stopPropagation()}>
+            <div className="modal-header-center">
+              <div className="success-icon">✅</div>
+              <h3 className="modal-title">Template Updated!</h3>
+            </div>
+            <p className="modal-message">
+              Your changes have been saved successfully.<br/>
+              The template is ready for your next session.
+            </p>
+            <div className="modal-actions centered">
+              <button 
+                className="btn-success-confirm" 
+                onClick={() => setShowEditSuccessModal(false)}
+              >
+                Great!
               </button>
             </div>
           </div>
