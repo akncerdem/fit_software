@@ -49,6 +49,9 @@ export default function Workout() {
   // CREATE WORKOUT SUCCESS MODAL STATE
   const [showCreateSuccessModal, setShowCreateSuccessModal] = useState(false);
 
+  // SUBMIT LOADING STATE (prevents double-click)
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // TEMPLATE EDIT SUCCESS MODAL STATE
   const [showEditSuccessModal, setShowEditSuccessModal] = useState(false);
 
@@ -324,6 +327,9 @@ export default function Workout() {
         return;
     }
 
+    // Prevent double submission
+    setIsSubmitting(true);
+
     try {
       console.log("Sending Payload...", formData, selectedExercises); // Debug 1
 
@@ -361,6 +367,7 @@ export default function Workout() {
       setShowCreateSuccessModal(true);
 
     } catch (err) {
+      setIsSubmitting(false);
       // IMPROVED ERROR LOGGING
       console.error("FULL ERROR OBJECT:", err);
       
@@ -378,6 +385,8 @@ export default function Workout() {
         // Something happened in setting up the request
         console.error("Error Message:", err.message);
       }
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -1735,11 +1744,11 @@ const handleApplyWorkoutAiSuggestion = async () => {
               </div>
 
               <div className="modal-actions">
-                <button type="button" className="btn-cancel" onClick={closeCreateWorkoutModal}>
+                <button type="button" className="btn-cancel" onClick={closeCreateWorkoutModal} disabled={isSubmitting}>
                   Cancel
                 </button>
-                <button type="submit" className="btn-save" disabled={selectedExercises.length === 0}>
-                  Save Workout
+                <button type="submit" className="btn-save" disabled={selectedExercises.length === 0 || isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save Workout'}
                 </button>
               </div>
             </form>
