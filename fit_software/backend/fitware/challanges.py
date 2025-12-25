@@ -139,6 +139,7 @@ class ChallengeProgressSerializer(serializers.Serializer):
         value = validated_data["progress_value"]
         challenge = instance.challenge
         user = instance.user
+        old_completed = instance.is_completed
 
         # 1) ChallengeJoined'i güncelle
         instance.progress_value = value
@@ -151,6 +152,11 @@ class ChallengeProgressSerializer(serializers.Serializer):
         # DİKKAT: progress_percent artık modelde @property ise
         # burada asla set ETMİYORUZ.
         instance.save()
+
+        # 2) Badge evaluation - check for milestone badges when challenge is completed
+        if not old_completed and instance.is_completed:
+            from .badges import BadgeService
+            BadgeService.check_milestone_badges(user)
 
         # 2) Bu kullanıcının eşleşen goal'lerini bul ve güncelle
         try:
