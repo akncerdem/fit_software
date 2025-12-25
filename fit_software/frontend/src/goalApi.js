@@ -112,8 +112,17 @@ export const goalsApi = {
 
   getActive: async () => (await api.get('/goals/active/')).data,
   getLogs: async () => (await api.get('/goals/activity_logs/')).data,
-  suggest: async (title, description) =>
-    (await api.post('/goals/suggest/', { title, description })).data,
+  suggest: async (title, description, profile = null) => {
+    const payload = { title, description };
+    if (profile && (profile.height || profile.weight || profile.fitness_level)) {
+      payload.profile = {
+        height: profile.height || null,
+        weight: profile.weight || null,
+        fitness_level: profile.fitness_level || null
+      };
+    }
+    return (await api.post('/goals/suggest/', payload)).data;
+  },
 
   getStats: async () => (await api.get('/goals/stats/')).data,
 };

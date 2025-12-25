@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from "react-router-dom";
+import Landing from "./landing";
 import Login from "./login";
 import SignUp from "./signup";
 import Anasayfa from "./anasayfa";
@@ -10,14 +11,17 @@ import Profile from './profile';
 
 function ProtectedRoute({ children }) {
   const token = localStorage.getItem("access") || sessionStorage.getItem("access");
-  return token ? children : <Navigate to="/" replace />;
+  return token ? children : <Navigate to="/login" replace />;
 }
 
 export default function App() {
   return (
     <Routes>
+      {/* Landing Page */}
+      <Route path="/" element={<Landing />} />
+
       {/* Auth screens */}
-      <Route path="/" element={<Login />} />
+      <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<Login />} />
       <Route path="/reset-password/:uid/:token" element={<Login />} />
 

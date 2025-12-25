@@ -228,10 +228,11 @@ class ChallengeViewSet(viewsets.ModelViewSet):
             is_completed=False,
         )
 
-        # 2) Challenge'ı oluştur ve ona goal'i bağla
+        badge_name = f"{data.get('title', '').strip()} Badge"
         challenge = serializer.save(
             created_user=user,
             goal=goal,
+            badge_name=badge_name,
         )
 
         # 3) Oluşturan kişiyi otomatik olarak challenge'a join et

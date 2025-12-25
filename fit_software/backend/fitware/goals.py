@@ -311,6 +311,7 @@ class GoalViewSet(viewsets.ModelViewSet):
     def suggest(self, request):
         """
         Returns a suggestion for a goal based on the title/description.
+        Uses profile data (height, weight, fitness_level) for personalized suggestions if available.
 
         - If the title looks meaningless (only random chars / only numbers / only symbols),
           returns: recognized=False, alternative=None.
@@ -319,57 +320,44 @@ class GoalViewSet(viewsets.ModelViewSet):
         """
         title_raw = (request.data.get("title") or "").strip()
         desc_raw = (request.data.get("description") or "").strip()
+        
+        # Get profile data from request (optional - for personalized suggestions)
+        profile_data = request.data.get("profile") or {}
+        user_height = profile_data.get("height")  # in cm
+        user_weight = profile_data.get("weight")  # in kg
+        user_fitness_level = profile_data.get("fitness_level")  # no_exercise, sometimes, regular
 
         title = title_raw.lower()
         desc = desc_raw.lower()
         combined = f"{title} {desc}".strip()
 
-        # ---- Unknown / meaningless title detection ----
-        def is_unknown_goal(t: str) -> bool:
+        # ---- Minimal pre-check (only obvious garbage) ----
+        def is_obviously_invalid(t: str) -> bool:
+            """Only catch the most obvious invalid inputs. Let AI decide the rest."""
             t = (t or "").strip()
-            if len(t) < 3:
+            
+            # Too short
+            if len(t) < 2:
                 return True
 
-            # At least one letter (not only numbers/symbols)
+            # No letters at all (only numbers/symbols)
             if not re.search(r"[a-zA-ZçğıöşüÇĞİÖŞÜ]", t):
                 return True
 
-            # "aaaaa", "11111", "....." (same char repeated)
-            if re.fullmatch(r"(.)\1{3,}", t):
-                return True
-
-            tl = t.lower()
-
-            # Long consonant streak -> likely gibberish (e.g., 'ldhfznb')
-            if re.search(r"[bcçdfgğhjklmnprsştvyz]{5,}", tl):
-                return True
-
-            # Very low vowel ratio -> likely gibberish for longer words
-            letters = re.findall(r"[a-zA-ZçğıöşüÇĞİÖŞÜ]", t)
-            if len(letters) >= 6:
-                vowels = set(list("aeiouöüı" + "AEIOUÖÜİ"))
-                vowel_count = sum(1 for ch in letters if ch in vowels)
-                if (vowel_count / len(letters)) < 0.28:
-                    return True
-
-            # Very short 1-word weird inputs (asdf, qwer, etc.)
-            keywords = [
-                "run", "jog", "swim", "cycle", "bike", "workout", "gym",
-                "lose", "gain", "calorie", "cardio", "weight", "walk"
-            ]
-            if len(t.split()) == 1 and len(t) <= 4 and not any(k in tl for k in keywords):
+            # Same character repeated (aaaa, 1111, etc.)
+            if re.fullmatch(r"(.)\1{2,}", t):
                 return True
 
             return False
 
-        if is_unknown_goal(title_raw):
+        if is_obviously_invalid(title_raw):
             return Response({
                 "recognized": False,
-                "message": "Unknown goal. Please provide a clear description of your fitness goal.",
+                "message": "Please enter a valid goal title.",
                 "alternative": None
             }, status=status.HTTP_200_OK)
 
-        # ---- Try Groq (OpenAI-compatible) if API key exists ----
+        # ---- Let AI decide if it's a valid fitness goal ----
         def try_groq_suggestion(title_text: str, desc_text: str):
             api_key = os.getenv("GROQ_API_KEY")
             if not api_key:
@@ -378,16 +366,53 @@ class GoalViewSet(viewsets.ModelViewSet):
             model = os.getenv("GROQ_MODEL", "llama-3.1-8b-instant")
             url = os.getenv("GROQ_BASE_URL", "https://api.groq.com/openai/v1/chat/completions")
 
-            system_msg = (
-                "You are a fitness goal assistant. Given a user's goal title and description, "
-                "generate ONE realistic, measurable goal suggestion. "
-                "Return STRICT JSON only (no markdown) with keys: "
-                "icon (string emoji), type (string), unit (string), target_value (number), "
-                "timeline_days (integer), message (string). "
-                "If the input is unclear, still return a safe generic suggestion."
+            # Build personalized system message based on profile availability
+            base_system = (
+                "You are a fitness goal assistant. "
+                "First, determine if the user's input is a valid fitness/health goal. "
+                "If the input is gibberish, random characters, keyboard mashing (like 'qwerty', 'asdf'), "
+                "or completely unrelated to fitness/health, return: "
+                '{\"recognized\": false, \"message\": \"This doesn\'t appear to be a fitness goal. Please describe what you want to achieve.\", \"alternative\": null}\n\n'
+                "If it IS a valid fitness goal, generate ONE realistic, measurable suggestion. "
+            )
+            
+            if user_height or user_weight or user_fitness_level:
+                base_system += (
+                    "IMPORTANT: Personalize the goal based on the user's profile. "
+                )
+                if user_fitness_level:
+                    if user_fitness_level == "no_exercise":
+                        base_system += "Since the user is a beginner, suggest LIGHTER and more achievable targets. "
+                    elif user_fitness_level == "regular":
+                        base_system += "Since the user exercises regularly, you can suggest more CHALLENGING targets. "
+                    else:
+                        base_system += "Suggest moderate targets suitable for someone who exercises sometimes. "
+            
+            system_msg = base_system + (
+                "Return STRICT JSON only (no markdown, no explanation outside JSON) with this schema:\n"
+                "- If valid: {\"recognized\": true, \"message\": \"string\", \"alternative\": {\"icon\": \"emoji\", \"type\": \"string\", \"unit\": \"string\", \"target_value\": number, \"timeline_days\": integer}}\n"
+                "- If invalid: {\"recognized\": false, \"message\": \"string\", \"alternative\": null}"
             )
 
-            user_msg = f"Title: {title_text}\nDescription: {desc_text}\n"
+            # Build user message with profile context if available
+            user_msg = f"User wants to set a goal with:\nTitle: {title_text}\nDescription: {desc_text}\n"
+            
+            if user_height or user_weight or user_fitness_level:
+                user_msg += "\nUser Profile:\n"
+                if user_height:
+                    user_msg += f"- Height: {user_height} cm\n"
+                if user_weight:
+                    user_msg += f"- Weight: {user_weight} kg\n"
+                if user_fitness_level:
+                    fitness_labels = {
+                        "no_exercise": "Beginner (doesn't exercise)",
+                        "sometimes": "Intermediate (sometimes exercises)",
+                        "regular": "Active (exercises 3+ times/week)"
+                    }
+                    user_msg += f"- Fitness Level: {fitness_labels.get(user_fitness_level, user_fitness_level)}\n"
+                user_msg += "\nPlease tailor the suggestion to this user's fitness level and body metrics."
+            
+            user_msg += "\n\nIs this a valid fitness goal? If yes, provide a suggestion. If no, explain why."
 
             payload = {
                 "model": model,
@@ -395,7 +420,7 @@ class GoalViewSet(viewsets.ModelViewSet):
                     {"role": "system", "content": system_msg},
                     {"role": "user", "content": user_msg}
                 ],
-                "temperature": 0.4
+                "temperature": 0.3
             }
 
             headers = {
@@ -404,7 +429,7 @@ class GoalViewSet(viewsets.ModelViewSet):
             }
 
             try:
-                resp = requests.post(url, headers=headers, json=payload, timeout=12)
+                resp = requests.post(url, headers=headers, json=payload, timeout=15)
                 if resp.status_code != 200:
                     return None
 
@@ -419,25 +444,43 @@ class GoalViewSet(viewsets.ModelViewSet):
                     return None
 
                 # Try to extract JSON if model added extra text
-                # 1) remove code fences if present
                 content = re.sub(r"^```(?:json)?\s*", "", content)
                 content = re.sub(r"\s*```$", "", content).strip()
 
-                # 2) If still has surrounding text, try to grab first JSON object
                 m = re.search(r"\{.*\}", content, flags=re.DOTALL)
                 if m:
                     content = m.group(0)
 
                 obj = json.loads(content)
 
-                # Validate required fields
-                alt = {
-                    "icon": str(obj.get("icon", "🎯"))[:10],
-                    "type": str(obj.get("type", "Workout"))[:50],
-                    "unit": str(obj.get("unit", "min"))[:20],
-                    "target_value": float(obj.get("target_value", 30)),
-                    "timeline_days": int(float(obj.get("timeline_days", 7))),
-                }
+                # Check if AI said it's not a valid goal
+                recognized = obj.get("recognized", True)
+                if not recognized:
+                    return {
+                        "recognized": False,
+                        "message": obj.get("message", "This doesn't appear to be a fitness goal."),
+                        "alternative": None
+                    }
+
+                # Valid goal - extract suggestion
+                alt = obj.get("alternative", {})
+                if not alt:
+                    alt = {
+                        "icon": str(obj.get("icon", "🎯"))[:10],
+                        "type": str(obj.get("type", "Workout"))[:50],
+                        "unit": str(obj.get("unit", "min"))[:20],
+                        "target_value": float(obj.get("target_value", 30)),
+                        "timeline_days": int(float(obj.get("timeline_days", 7))),
+                    }
+                else:
+                    alt = {
+                        "icon": str(alt.get("icon", "🎯"))[:10],
+                        "type": str(alt.get("type", "Workout"))[:50],
+                        "unit": str(alt.get("unit", "min"))[:20],
+                        "target_value": float(alt.get("target_value", 30)),
+                        "timeline_days": int(float(alt.get("timeline_days", 7))),
+                    }
+                
                 msg = str(obj.get("message", "Suggestion generated based on your title/description."))
 
                 # Basic sanity
@@ -446,17 +489,13 @@ class GoalViewSet(viewsets.ModelViewSet):
                 if alt["target_value"] <= 0:
                     alt["target_value"] = 30
 
-                return {"message": msg, "alternative": alt}
+                return {"recognized": True, "message": msg, "alternative": alt}
             except Exception:
                 return None
 
         groq_result = try_groq_suggestion(title_raw, desc_raw)
         if groq_result:
-            return Response({
-                "recognized": True,
-                "message": groq_result["message"],
-                "alternative": groq_result["alternative"]
-            }, status=status.HTTP_200_OK)
+            return Response(groq_result, status=status.HTTP_200_OK)
 
         # ---- Keyword-based suggestion (fallback) ----
         icon = "💪"
