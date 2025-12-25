@@ -618,6 +618,10 @@
 .exercise-name {
   font-weight: 500;
   color: #1e293b;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
 }
 
 .exercise-category-badge {
@@ -1604,7 +1608,16 @@
   align-items: center;
   gap: 0.75rem;
   flex: 1; 
-  overflow: hidden; 
+  overflow: hidden;
+  min-width: 0; /* Critical for text truncation in flex containers */
+}
+
+.exercise-info .exercise-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
 }
 
 .exercise-inputs {
@@ -1612,6 +1625,38 @@
   align-items: center;
   gap: 0.5rem;
   flex-shrink: 0; 
+}
+
+/* Responsive styles for selected exercises in create workout modal */
+@media (max-width: 600px) {
+  .selected-exercise-item {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem;
+  }
+
+  .exercise-info {
+    width: 100%;
+    gap: 0.5rem;
+  }
+
+  .exercise-info .exercise-name {
+    white-space: normal;
+    overflow: visible;
+    text-overflow: initial;
+    word-break: break-word;
+  }
+
+  .exercise-inputs {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .exercise-inputs .input-small {
+    flex: 1;
+    max-width: 80px;
+  }
 }
 
 /* Inputların boyutunu sabitle */
