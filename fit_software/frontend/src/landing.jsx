@@ -51,7 +51,7 @@ export default function Landing() {
             with our comprehensive health management platform.
           </p>
 
-          <Link to="/login" className="hero-cta">
+          <Link to="/signup" className="hero-cta">
             Get Started
           </Link>
 
