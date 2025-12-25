@@ -198,7 +198,6 @@ export default function Workout() {
       setSelectedWorkout(response.data);
       setShowDetailModal(true);
       fetchWorkouts();
-      alert("Session started! 💪");
     } catch (err) {
       console.error("Error starting session:", err);
       alert("Could not start session.");
@@ -760,10 +759,6 @@ const handleApplyWorkoutAiSuggestion = async () => {
       // Then mark as complete
       const completeResponse = await api.post(`workouts/sessions/${selectedWorkout.id}/complete/`);
       
-      // Check if a new badge was earned
-      if (completeResponse.data?.new_badge) {
-        alert(`🎉 Congratulations! You earned a new badge: ${completeResponse.data.new_badge}`);
-      }
       
       // Refresh data
       const response = await api.get(`workouts/sessions/${selectedWorkout.id}/`);
