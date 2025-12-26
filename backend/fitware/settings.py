@@ -15,7 +15,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-insecure-change-me")
 DEBUG = os.getenv("DEBUG", "True") == "True"
-ALLOWED_HOSTS = ["*"] if DEBUG else os.getenv("ALLOWED_HOSTS", "").split(",")
+ALLOWED_HOSTS = ['fitware.com.tr', 'www.fitware.com.tr', '35.198.170.119', 'localhost', '127.0.0.1']
 
 INSTALLED_APPS = [
     "django.contrib.admin",
@@ -69,7 +69,13 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:5173",  # Vite dev
     "http://localhost:3000",  # CRA (if you use it)
 ]
-CSRF_TRUSTED_ORIGINS = ["http://localhost:8000"]
+CSRF_TRUSTED_ORIGINS = [
+    'https://fitware.com.tr',
+    'http://34.123.456.78',  # Sunucu IP adresiniz
+]
+
+# Eğer Nginx üzerinden HTTPS yönlendirmesi varsa bunu da ekleyin:
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
@@ -146,6 +152,7 @@ USE_I18N = True
 USE_TZ = True
 
 STATIC_URL = "static/"
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
@@ -210,3 +217,6 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+CSRF_TRUSTED_ORIGINS: ['https://fitware.com.tr', 'https://www.fitware.com.tr']
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

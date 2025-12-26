@@ -21,7 +21,7 @@ export default function FitwareLogin() {
   const location = useLocation();
 
   // --- API base (DEV) ---
-  const API_BASE = useMemo(() => "http://127.0.0.1:8000", []);
+  const API_BASE = useMemo(() => "https://fitware.com.tr", []);
 
   // view: login | forgot | reset
   const [view, setView] = useState("login");
