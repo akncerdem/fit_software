@@ -600,6 +600,9 @@
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  margin-bottom: 1rem;
+  color: #64748b;
+  font-size: 0.875rem;
 }
 
 .exercise-order {
@@ -1445,6 +1448,40 @@
     margin: 0 !important;
   }
 
+  /* Workout Header Responsive Fix */
+  .workout-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+
+  .workout-title-section {
+    width: 100%;
+  }
+
+  .workout-actions {
+    width: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+    align-items: stretch;
+  }
+
+  .view-toggle {
+    margin-right: 0;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .toggle-btn {
+    flex: 1;
+    text-align: center;
+  }
+
+  .btn-new-workout {
+    width: 100%;
+    justify-content: center;
+  }
+
   .modal-large {
     width: 95%;
     max-height: 90vh;
@@ -1461,82 +1498,6 @@
   }
 }
 
-
-/* --- AI Suggestion (Workout modal) --- */
-.ai-actions{
-  display:flex;
-  justify-content:flex-end;
-  margin: 8px 0 12px;
-}
-
-.ai-btn{
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #fff;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.ai-btn:disabled{
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.ai-card{
-  border: 1px solid rgba(0,0,0,0.12);
-  border-radius: 12px;
-  padding: 12px;
-  margin-bottom: 14px;
-  background: #fff;
-}
-
-.ai-card-header{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap: 12px;
-  margin-bottom: 8px;
-}
-
-.ai-title{
-  font-weight: 700;
-}
-
-.ai-toggle{
-  border: none;
-  background: transparent;
-  cursor: pointer;
-  font-weight: 600;
-}
-
-.ai-msg{
-  margin: 8px 0;
-  line-height: 1.4;
-}
-
-.ai-alt{
-  margin-top: 8px;
-  padding: 10px;
-  border-radius: 10px;
-  background: rgba(0,0,0,0.03);
-}
-
-.ai-ex-list ul{
-  margin: 6px 0 0 18px;
-}
-
-.ai-apply{
-  margin-top: 10px;
-  padding: 10px 12px;
-  border-radius: 10px;
-  border: 1px solid rgba(0,0,0,0.12);
-  background: #fff;
-  cursor: pointer;
-  font-weight: 700;
-}
-
-/* Responsive Design for Cards */
 @media (max-width: 768px) {
   .workouts-grid {
     grid-template-columns: 1fr;
@@ -1572,6 +1533,32 @@
 }
 
 @media (max-width: 480px) {
+  .workout-header {
+    gap: 0.75rem;
+  }
+
+  .workout-title {
+    font-size: 1.25rem !important;
+  }
+
+  .workout-description {
+    font-size: 0.8rem;
+  }
+
+  .view-toggle {
+    padding: 3px;
+  }
+
+  .toggle-btn {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+  }
+
+  .btn-new-workout {
+    padding: 0.65rem 1rem;
+    font-size: 0.9rem;
+  }
+
   .workout-card {
     padding: 1rem;
   }
