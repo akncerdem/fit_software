@@ -1,0 +1,176 @@
+{
+  "summary": {
+    "total_tests": 17,
+    "passed": 16,
+    "failed": 1,
+    "pass_rate": 94.11764705882352,
+    "total_findings": 5,
+    "findings_by_severity": {
+      "MEDIUM": 3,
+      "LOW": 2
+    },
+    "timestamp": "2025-12-28T21:40:41.126263"
+  },
+  "results": [
+    {
+      "test_name": "test_login_valid_credentials",
+      "passed": true,
+      "duration": 5.629612445831299,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:11.376121"
+    },
+    {
+      "test_name": "test_login_invalid_credentials",
+      "passed": true,
+      "duration": 2.7325119972229004,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:14.123047"
+    },
+    {
+      "test_name": "test_login_empty_fields",
+      "passed": true,
+      "duration": 6.117778062820435,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:20.245276"
+    },
+    {
+      "test_name": "test_signup_valid_data",
+      "passed": true,
+      "duration": 2.8770089149475098,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:23.125694"
+    },
+    {
+      "test_name": "test_signup_password_mismatch",
+      "passed": true,
+      "duration": 2.0353848934173584,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:25.164111"
+    },
+    {
+      "test_name": "test_create_goal_valid",
+      "passed": true,
+      "duration": 5.143875360488892,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:33.118847"
+    },
+    {
+      "test_name": "test_update_goal_progress",
+      "passed": true,
+      "duration": 7.889790296554565,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:38:43.791912"
+    },
+    {
+      "test_name": "test_goal_completion",
+      "passed": true,
+      "duration": 14.930002212524414,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:39:01.548133"
+    },
+    {
+      "test_name": "test_active_goals_filter",
+      "passed": true,
+      "duration": 2.4707374572753906,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:39:06.792074"
+    },
+    {
+      "test_name": "test_create_challenge",
+      "passed": true,
+      "duration": 3.058659553527832,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:39:12.718376"
+    },
+    {
+      "test_name": "test_challenge_creates_goal",
+      "passed": true,
+      "duration": 5.515648365020752,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:39:21.067371"
+    },
+    {
+      "test_name": "test_list_challenges",
+      "passed": true,
+      "duration": 5.220918893814087,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:39:35.897753"
+    },
+    {
+      "test_name": "test_sql_injection_login",
+      "passed": true,
+      "duration": 14.08682370185852,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:39:49.987981"
+    },
+    {
+      "type": "SECURITY",
+      "title": "XSS payload stored",
+      "description": "XSS payload was stored: <script>alert('xss')</script>",
+      "severity": "MEDIUM",
+      "recommendation": "Ensure frontend properly escapes output",
+      "timestamp": "2025-12-28T21:39:55.443009"
+    },
+    {
+      "type": "SECURITY",
+      "title": "XSS payload stored",
+      "description": "XSS payload was stored: <img src=x onerror=alert('xss')>",
+      "severity": "MEDIUM",
+      "recommendation": "Ensure frontend properly escapes output",
+      "timestamp": "2025-12-28T21:39:57.930032"
+    },
+    {
+      "type": "SECURITY",
+      "title": "XSS payload stored",
+      "description": "XSS payload was stored: javascript:alert('xss')",
+      "severity": "MEDIUM",
+      "recommendation": "Ensure frontend properly escapes output",
+      "timestamp": "2025-12-28T21:40:00.507926"
+    },
+    {
+      "test_name": "test_xss_prevention_goal",
+      "passed": true,
+      "duration": 10.516947507858276,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:40:00.508499"
+    },
+    {
+      "type": "VALIDATION",
+      "title": "Zero target value accepted",
+      "description": "Goal with target_value=0 was accepted",
+      "severity": "LOW",
+      "recommendation": "Consider whether zero target makes sense",
+      "timestamp": "2025-12-28T21:40:05.900628"
+    },
+    {
+      "type": "VALIDATION",
+      "title": "Negative target value accepted",
+      "description": "Goal with target_value=-1 was accepted",
+      "severity": "LOW",
+      "recommendation": "Consider validating target_value > 0",
+      "timestamp": "2025-12-28T21:40:13.259794"
+    },
+    {
+      "test_name": "test_boundary_values_goal_target",
+      "passed": true,
+      "duration": 26.041171550750732,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:40:26.552957"
+    },
+    {
+      "test_name": "test_unauthorized_access",
+      "passed": false,
+      "duration": 12.04754376411438,
+      "error_message": "HTTPConnectionPool(host='localhost', port=8000): Read timed out. (read timeout=10)",
+      "timestamp": "2025-12-28T21:40:38.776840"
+    },
+    {
+      "test_name": "test_health_endpoint",
+      "passed": true,
+      "duration": 2.061903238296509,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:40:41.114357"
+    }
+  ],
+  "log_file": "C:\\Users\\rahim\\Desktop\\heps\\project\\411e\\fit_software\\fit_software\\backend\\fitware\\tests\\frontend\\test_logs\\frontend_test_results_20251228_213805.log"
+}

@@ -1,0 +1,21 @@
+{
+  "summary": {
+    "total_tests": 1,
+    "passed": 1,
+    "failed": 0,
+    "pass_rate": 100.0,
+    "total_findings": 0,
+    "findings_by_severity": {},
+    "timestamp": "2025-12-28T21:37:08.685355"
+  },
+  "results": [
+    {
+      "test_name": "test_progress_increasing_goal",
+      "passed": true,
+      "duration": 0.0015883445739746094,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:08.682786"
+    }
+  ],
+  "log_file": "C:\\Users\\rahim\\Desktop\\heps\\project\\411e\\fit_software\\fit_software\\backend\\fitware\\tests\\frontend\\test_logs\\frontend_test_results_20251228_213708.log"
+}

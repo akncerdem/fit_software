@@ -1,0 +1,105 @@
+{
+  "summary": {
+    "total_tests": 13,
+    "passed": 13,
+    "failed": 0,
+    "pass_rate": 100.0,
+    "total_findings": 0,
+    "findings_by_severity": {},
+    "timestamp": "2025-12-28T21:37:56.678200"
+  },
+  "results": [
+    {
+      "test_name": "test_progress_increasing_goal",
+      "passed": true,
+      "duration": 0.0012369155883789062,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.559475"
+    },
+    {
+      "test_name": "test_progress_decreasing_goal",
+      "passed": true,
+      "duration": 0.0007834434509277344,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.563372"
+    },
+    {
+      "test_name": "test_progress_edge_cases",
+      "passed": true,
+      "duration": 0.0005679130554199219,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.566617"
+    },
+    {
+      "test_name": "test_token_storage_priority",
+      "passed": true,
+      "duration": 0.000377655029296875,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.569261"
+    },
+    {
+      "test_name": "test_token_refresh_logic",
+      "passed": true,
+      "duration": 0.0011501312255859375,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.572689"
+    },
+    {
+      "test_name": "test_icon_resolution_from_keywords",
+      "passed": true,
+      "duration": 0.0012176036834716797,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.576605"
+    },
+    {
+      "test_name": "test_unit_normalization",
+      "passed": true,
+      "duration": 0.0013761520385742188,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.580652"
+    },
+    {
+      "test_name": "test_email_validation",
+      "passed": true,
+      "duration": 0.001402139663696289,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.584565"
+    },
+    {
+      "test_name": "test_password_validation",
+      "passed": true,
+      "duration": 0.0012829303741455078,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.588665"
+    },
+    {
+      "test_name": "test_badge_tier_calculation",
+      "passed": true,
+      "duration": 0.0016875267028808594,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:18.593183"
+    },
+    {
+      "test_name": "test_goal_start_value_logic",
+      "passed": true,
+      "duration": 5.160080432891846,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:26.887043"
+    },
+    {
+      "test_name": "test_activity_log_on_completion",
+      "passed": true,
+      "duration": 10.672277927398682,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:40.376419"
+    },
+    {
+      "test_name": "test_challenge_goal_sync",
+      "passed": true,
+      "duration": 13.484067440032959,
+      "error_message": "",
+      "timestamp": "2025-12-28T21:37:56.676234"
+    }
+  ],
+  "log_file": "C:\\Users\\rahim\\Desktop\\heps\\project\\411e\\fit_software\\fit_software\\backend\\fitware\\tests\\frontend\\test_logs\\frontend_test_results_20251228_213718.log"
+}

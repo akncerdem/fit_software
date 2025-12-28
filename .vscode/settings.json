@@ -1,0 +1,7 @@
+{
+    "python.testing.pytestArgs": [
+        "fit_software"
+    ],
+    "python.testing.unittestEnabled": false,
+    "python.testing.pytestEnabled": true
+}
