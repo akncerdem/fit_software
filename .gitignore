@@ -1,25 +1,7 @@
-# Gizli Dosyalar
 .env
 backend/.env
-.DS_Store
-
-# Python & Django
 backend/venv/
-venv/
-__pycache__/
 *.pyc
-*.log
+__pycache__/
 db.sqlite3
-
-# Statik ve Medya
-backend/media/
-backend/static/
-
-# Frontend
-frontend/node_modules/
-frontend/dist/
-frontend/.env
-
-# Sistem ve Gereksizler
-*.sock
-*.lnk
+media/
